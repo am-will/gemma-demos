@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  ArrowRight,
   Bot,
   CircleAlert,
   Clock3,
@@ -175,7 +176,7 @@ function App() {
           />
 
           <button className="primary-button" disabled={!canStart} onClick={startRun}>
-            Start image search
+            Start image search <span><ArrowRight size={18} /></span>
           </button>
           {error ? <div className="error-pill"><CircleAlert size={16} /> {error}</div> : null}
         </div>
