@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  ArrowRight,
   Bot,
   CircleAlert,
   Clock3,
   FolderOpen,
   Image as ImageIcon,
-  Play,
   RefreshCw,
 } from "lucide-react";
 import "./styles.css";
@@ -25,13 +23,11 @@ function App() {
   const previewUrlsRef = useRef([]);
   const [fileSummary, setFileSummary] = useState({ count: 0, folderName: "", previews: [] });
   const [description, setDescription] = useState("red car with visible body damage");
-  const [runId, setRunId] = useState(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
   const [results, setResults] = useState({ gemini: null, cerebras: null });
   const [winnerProvider, setWinnerProvider] = useState(null);
-  const [manifestUrl, setManifestUrl] = useState("");
   const [leftProvider, setLeftProvider] = useState("gemini");
   const [runStartedAt, setRunStartedAt] = useState(null);
   const [now, setNow] = useState(Date.now());
@@ -79,9 +75,7 @@ function App() {
     setEvents([]);
     setResults({ gemini: null, cerebras: null });
     setWinnerProvider(null);
-    setManifestUrl("");
     setRunning(true);
-    setRunId(null);
     const startedAt = Date.now();
     setRunStartedAt(startedAt);
     setNow(startedAt);
@@ -94,7 +88,6 @@ function App() {
       const response = await fetch("/api/runs", { method: "POST", body: form });
       const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      setRunId(data.runId);
 
       const source = new EventSource(`/api/runs/${data.runId}/events`);
       ["trace", "metric", "partial_result", "provider_done", "run_done", "error"].forEach((type) => {
@@ -108,7 +101,6 @@ function App() {
             }
           }
           if (type === "run_done") {
-            setManifestUrl(payload.manifestUrl || "");
             setRunning(false);
             source.close();
           }
@@ -138,7 +130,7 @@ function App() {
       <Decorations />
       <section className="hero">
         <div className="hero-copy">
-          <div className="eyebrow"><Bot size={18} /> side-by-side multimodal</div>
+          <div className="eyebrow"><Bot size={18} /> Side-by-Side Multimodal Demo</div>
           <h1>Image Search</h1>
           <p>Find and match images according to your description, then compare how each API searches the same folder in real time.</p>
         </div>
@@ -168,21 +160,23 @@ function App() {
           />
 
           <button className="primary-button" disabled={!canStart} onClick={startRun}>
-            <Play size={20} /> Start both agents <span><ArrowRight size={18} /></span>
+            Start image search
           </button>
           {error ? <div className="error-pill"><CircleAlert size={16} /> {error}</div> : null}
         </div>
       </section>
 
       {previews.length ? (
-        <section className="image-strip" aria-label="Selected image previews">
-          {previews.map((preview) => (
-            <figure key={preview.url}>
-              <img src={preview.url} alt="" />
-              <figcaption>{preview.name}</figcaption>
-            </figure>
-          ))}
-        </section>
+        <div className="image-strip-shell">
+          <section className="image-strip" aria-label="Selected image previews">
+            {previews.map((preview) => (
+              <figure key={preview.url}>
+                <img src={preview.url} alt="" />
+                <figcaption>{preview.name}</figcaption>
+              </figure>
+            ))}
+          </section>
+        </div>
       ) : null}
 
       <section className="agents-grid">
@@ -204,12 +198,6 @@ function App() {
         ))}
       </section>
 
-      {manifestUrl || runId ? (
-        <div className="run-footer">
-        {manifestUrl ? <a className="manifest-link" href={manifestUrl} target="_blank" rel="noreferrer">Open run manifest</a> : null}
-        {runId ? <span className="run-id">Run {runId}</span> : null}
-        </div>
-      ) : null}
     </main>
   );
 }
@@ -315,8 +303,8 @@ function shortMatchDescription(match) {
 function formatTimer(ms) {
   const safeMs = Math.max(0, Math.round(ms));
   const seconds = Math.floor(safeMs / 1000);
-  const milliseconds = String(safeMs % 1000).padStart(3, "0");
-  return `${seconds}:${milliseconds}`;
+  const milliseconds = String(safeMs % 1000).padStart(3, "0").slice(1);
+  return `${String(seconds).padStart(2, "0")}:${milliseconds}`;
 }
 
 function Metric({ label, value, icon: Icon, variant = "" }) {
