@@ -1,5 +1,8 @@
 # Damage Scout
 
+<img width="1274" height="1392" alt="CleanShot 2026-06-24 at 17 25 55" src="https://github.com/user-attachments/assets/ed8df815-674f-428f-aded-1a28cefd06a6" />
+
+
 Hackathon demo app for rental-car walkaround inspections with Cerebras Gemma 4.
 
 The browser uploads a video and shows a local first-frame preview in the picker. The Node server samples frames with `ffmpeg`, sends each selected frame to the Cerebras `gemma-4-31b-trial` vision endpoint, asks for structured JSON damage detections, deduplicates repeat sightings, draws boxes on selected evidence frames, and writes a job manifest under `outputs/jobs/<jobId>/`.
