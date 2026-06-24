@@ -108,9 +108,10 @@ function App() {
           const payload = JSON.parse(event.data);
           setEvents((current) => [...current, payload]);
           if (type === "provider_done") {
-            setResults((current) => ({ ...current, [payload.provider]: payload }));
+            const resultKey = payload.panelProvider || payload.provider;
+            setResults((current) => ({ ...current, [resultKey]: payload }));
             if (isSuccessfulCompletion(payload)) {
-              setWinnerProvider((current) => current || payload.provider);
+              setWinnerProvider((current) => current || resultKey);
             }
           }
           if (type === "run_done") {
@@ -118,7 +119,8 @@ function App() {
             source.close();
           }
           if (type === "error") {
-            setResults((current) => payload.provider in current ? { ...current, [payload.provider]: { provider: payload.provider, status: "failed", error: payload.message } } : current);
+            const resultKey = payload.panelProvider || payload.provider;
+            setResults((current) => resultKey in current ? { ...current, [resultKey]: { provider: payload.provider, panelProvider: payload.panelProvider, status: "failed", error: payload.message } } : current);
           }
         });
       });
@@ -201,8 +203,9 @@ function App() {
             leftProvider={leftProvider}
             onToggleLeftProvider={() => setLeftProvider((current) => current === "gemini" ? "openrouter" : "gemini")}
             health={health?.providers?.[provider === "gemini" ? leftProvider : provider]}
-            events={events.filter((event) => event.provider === provider)}
+            events={events.filter((event) => (event.panelProvider || event.provider) === provider)}
             result={results[provider]}
+            referenceMatches={provider === "cerebras" ? [] : results.cerebras?.matches || []}
             running={running}
             winnerProvider={winnerProvider}
             runStartedAt={runStartedAt}
@@ -239,9 +242,9 @@ function isSuccessfulCompletion(payload) {
   return payload.batches.some((batch) => !batch.error);
 }
 
-function AgentPanel({ provider, activeProvider, leftProvider, onToggleLeftProvider, health, events, result, running, winnerProvider, runStartedAt, now }) {
+function AgentPanel({ provider, activeProvider, leftProvider, onToggleLeftProvider, health, events, result, referenceMatches, running, winnerProvider, runStartedAt, now }) {
   const config = PROVIDERS[activeProvider];
-  const matches = sortMatchesForDisplay(result?.matches || []);
+  const matches = sortMatchesForDisplay(result?.matches || [], referenceMatches);
   const status = result?.status || (running ? "running" : "idle");
   const finished = Boolean(result?.totalLatencyMs);
   const isWinner = winnerProvider === provider;
@@ -299,11 +302,19 @@ function AgentPanel({ provider, activeProvider, leftProvider, onToggleLeftProvid
   );
 }
 
-function sortMatchesForDisplay(matches) {
-  return [...matches].sort((a, b) => String(a.filename || "").localeCompare(String(b.filename || ""), undefined, {
-    numeric: true,
-    sensitivity: "base"
-  }));
+function sortMatchesForDisplay(matches, referenceMatches = []) {
+  if (!referenceMatches.length) return [...matches];
+  const referenceOrder = new Map(referenceMatches.map((match, index) => [String(match.filename || ""), index]));
+  return [...matches].sort((a, b) => {
+    const aReference = referenceOrder.get(String(a.filename || ""));
+    const bReference = referenceOrder.get(String(b.filename || ""));
+    const aHasReference = aReference !== undefined;
+    const bHasReference = bReference !== undefined;
+    if (aHasReference && bHasReference) return aReference - bReference;
+    if (aHasReference) return -1;
+    if (bHasReference) return 1;
+    return Number(a.rank || 0) - Number(b.rank || 0);
+  });
 }
 
 function shortMatchDescription(match) {

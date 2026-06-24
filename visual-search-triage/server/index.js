@@ -197,7 +197,7 @@ async function processRun(run) {
   ]);
 
   const results = {
-    gemini: settleResult("gemini", leftProvider, run),
+    [run.leftProvider]: settleResult(run.leftProvider, leftProvider, run, "gemini"),
     cerebras: settleResult("cerebras", cerebras, run)
   };
 
@@ -237,12 +237,12 @@ async function processRun(run) {
   });
 }
 
-function settleResult(provider, settled, run) {
+function settleResult(provider, settled, run, panelProvider = provider) {
   if (settled.status === "fulfilled") return settled.value;
   const message = settled.reason?.message || String(settled.reason);
-  emit(run, "error", { provider, message });
-  emit(run, "provider_done", { provider, status: "failed", error: message });
-  return { provider, status: "failed", error: message };
+  emit(run, "error", { provider, panelProvider, message });
+  emit(run, "provider_done", { provider, panelProvider, status: "failed", error: message });
+  return { provider, panelProvider, status: "failed", error: message };
 }
 
 function emit(run, type, payload) {

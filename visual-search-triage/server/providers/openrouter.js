@@ -1,7 +1,8 @@
 import { performance } from "node:perf_hooks";
 import { attachImageUrls, buildBatchPrompt, normalizeProviderResults, parseJsonFromText } from "../prompt.js";
 
-const PROVIDER = "gemini";
+const PROVIDER = "openrouter";
+const PANEL_PROVIDER = "gemini";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export async function runOpenRouterAgent({ description, batches, emit }) {
@@ -10,7 +11,7 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
   const startedAt = performance.now();
   const parsedBatches = [];
 
-  emit("trace", { provider: PROVIDER, phase: "boot", message: `Agent online through OpenRouter with model ${model}` });
+  emit("trace", { provider: PROVIDER, panelProvider: PANEL_PROVIDER, providerRoute: PROVIDER, phase: "boot", message: `Agent online through OpenRouter with model ${model}` });
   if (!apiKey) throw new Error("Missing OPENROUTER_API_KEY.");
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
@@ -37,11 +38,15 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
 
     emit("trace", {
       provider: PROVIDER,
+      panelProvider: PANEL_PROVIDER,
+      providerRoute: PROVIDER,
       phase: "command",
       message: renderOpenRouterCurl({ model, imageCount: batch.length, description })
     });
     emit("trace", {
       provider: PROVIDER,
+      panelProvider: PANEL_PROVIDER,
+      providerRoute: PROVIDER,
       phase: "dispatch",
       message: `POST ${API_URL} batch ${batchIndex + 1}/${batches.length} with ${batch.length} images`
     });
@@ -63,6 +68,8 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
       const latencyMs = Math.round(performance.now() - batchStarted);
       emit("trace", {
         provider: PROVIDER,
+        panelProvider: PANEL_PROVIDER,
+        providerRoute: PROVIDER,
         phase: response.ok ? "response" : "error",
         message: `HTTP ${response.status} in ${latencyMs}ms`
       });
@@ -85,6 +92,8 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
 
       emit("partial_result", {
         provider: PROVIDER,
+        panelProvider: PANEL_PROVIDER,
+        providerRoute: PROVIDER,
         batch: batchIndex + 1,
         matches: parsed.matches || [],
         misses: parsed.misses || [],
@@ -94,6 +103,8 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
     } catch (error) {
       emit("error", {
         provider: PROVIDER,
+        panelProvider: PANEL_PROVIDER,
+        providerRoute: PROVIDER,
         batch: batchIndex + 1,
         message: error.message || String(error)
       });
@@ -113,13 +124,14 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
   const totalLatencyMs = Math.round(performance.now() - startedAt);
   emit("provider_done", {
     provider: PROVIDER,
+    panelProvider: PANEL_PROVIDER,
     status: "complete",
     totalLatencyMs,
     model,
-    providerRoute: "openrouter",
+    providerRoute: PROVIDER,
     ...normalized
   });
-  return { provider: PROVIDER, status: "complete", totalLatencyMs, model, providerRoute: "openrouter", ...normalized };
+  return { provider: PROVIDER, panelProvider: PANEL_PROVIDER, status: "complete", totalLatencyMs, model, providerRoute: PROVIDER, ...normalized };
 }
 
 function renderOpenRouterCurl({ model, imageCount, description }) {

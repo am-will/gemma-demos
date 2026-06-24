@@ -47,11 +47,17 @@ export function normalizeProviderResults({ provider, batches }) {
 
   for (const batch of batches) {
     if (Array.isArray(batch.parsed?.matches)) {
-      for (const item of batch.parsed.matches) {
+      const batchMatches = [...batch.parsed.matches].sort((a, b) => {
+        const rankDelta = Number(a.rank || 9999) - Number(b.rank || 9999);
+        if (rankDelta) return rankDelta;
+        return String(a.filename || "").localeCompare(String(b.filename || ""), undefined, { numeric: true, sensitivity: "base" });
+      });
+      for (const item of batchMatches) {
         matches.push({
           provider,
           filename: String(item.filename || "").trim(),
-          rank: Number(item.rank || matches.length + 1),
+          providerRank: Number(item.rank || batchMatches.length + 1),
+          rank: matches.length + 1,
           confidence: clampConfidence(item.confidence),
           why_match: String(item.why_match || item.reason || "").trim(),
           visible_evidence: String(item.visible_evidence || "").trim(),
@@ -73,11 +79,6 @@ export function normalizeProviderResults({ provider, batches }) {
     }
     if (batch.parsed?.summary) summaries.push(String(batch.parsed.summary));
   }
-
-  matches.sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: "base" }));
-  matches.forEach((match, index) => {
-    match.rank = index + 1;
-  });
 
   return {
     matches,
