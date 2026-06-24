@@ -1,5 +1,8 @@
 # Gemma Demos
 
+<img width="1644" height="1523" alt="CleanShot 2026-06-24 at 16 56 54" src="https://github.com/user-attachments/assets/305e6c2e-aebb-4d0a-a6db-faf501da29c8" />
+
+
 Local multimodal demos for testing fast vision-capable model workflows with Gemma, Cerebras, Gemini, and OpenRouter.
 
 ## Demos
