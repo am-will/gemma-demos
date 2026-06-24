@@ -1,5 +1,8 @@
 # Image Search
 
+<img width="1644" height="1523" alt="CleanShot 2026-06-24 at 16 56 54" src="https://github.com/user-attachments/assets/3d39acc1-2a4e-4c6e-b59b-d197f41edbec" />
+
+
 Side-by-side multimodal demo for image search across a folder of images.
 
 The browser selects a folder, uploads all image files to the local server, and starts two agents at the same time:
