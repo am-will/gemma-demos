@@ -9,5 +9,10 @@ dist/
 work/
 outputs/
 downloads/
-datasets/
-*.md
+/datasets/
+!visual-search-triage/datasets/
+!visual-search-triage/datasets/coco/
+!visual-search-triage/datasets/coco/*.jpg
+
+visual-search-triage-plan.md
+why-fast-vision-models-change-the-shape-of-ai-apps.md

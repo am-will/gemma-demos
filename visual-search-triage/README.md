@@ -46,9 +46,23 @@ npm run dev
 
 Open `http://127.0.0.1:5176/`.
 
+## Sample Images
+
+This repo includes a small COCO validation sample for demos:
+
+```text
+visual-search-triage/datasets/coco
+```
+
+When the app opens the folder picker, select that `coco` folder. A good first query for the bundled sample is:
+
+```text
+Food
+```
+
 ## Demo Flow
 
-1. Choose a folder full of images.
+1. Choose a folder full of images. For the bundled demo set, choose `visual-search-triage/datasets/coco`.
 2. Type a target description, for example `red car with visible body damage`.
 3. Click `Start both agents`.
 4. Narrate the two terminal panes: both agents receive the same normalized image batches, build comparable API calls, and return all matches with thumbnails.

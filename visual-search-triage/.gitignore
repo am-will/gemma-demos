@@ -8,4 +8,7 @@ dist/
 work/
 outputs/
 downloads/
-datasets/
+datasets/*
+!datasets/coco/
+datasets/coco/*
+!datasets/coco/*.jpg
