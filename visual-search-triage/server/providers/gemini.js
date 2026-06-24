@@ -22,12 +22,15 @@ export async function runGeminiAgent({ description, batches, emit }) {
           role: "user",
           parts: [
             { text: prompt },
-            ...batch.map((image) => ({
-              inline_data: {
-                mime_type: image.mimeType,
-                data: image.base64
+            ...batch.flatMap((image, index) => [
+              { text: `Image ${index + 1} filename: ${image.originalName}` },
+              {
+                inline_data: {
+                  mime_type: image.mimeType,
+                  data: image.base64
+                }
               }
-            }))
+            ])
           ]
         }
       ],
@@ -128,7 +131,7 @@ function renderGeminiCurl({ model, imageCount, description }) {
     `curl -s "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent" \\`,
     `  -H "x-goog-api-key: $GEMINI_API_KEY" \\`,
     `  -H "Content-Type: application/json" \\`,
-    `  -d '{"contents":[{"role":"user","parts":[{"text":"${escapeForCommand(description).slice(0, 120)}..."}, ${imageCount} inline_data parts]}],"generationConfig":{"responseMimeType":"application/json","responseSchema":{...}}}'`
+    `  -d '{"contents":[{"role":"user","parts":[{"text":"${escapeForCommand(description).slice(0, 120)}..."}, ${imageCount} labeled inline_data parts]}],"generationConfig":{"responseMimeType":"application/json","responseSchema":{...}}}'`
   ].join("\n");
 }
 

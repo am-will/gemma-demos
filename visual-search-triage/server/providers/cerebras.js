@@ -23,10 +23,13 @@ export async function runCerebrasAgent({ description, batches, emit }) {
           role: "user",
           content: [
             { type: "text", text: prompt },
-            ...batch.map((image) => ({
-              type: "image_url",
-              image_url: { url: image.dataUrl }
-            }))
+            ...batch.flatMap((image, index) => [
+              { type: "text", text: `Image ${index + 1} filename: ${image.originalName}` },
+              {
+                type: "image_url",
+                image_url: { url: image.dataUrl }
+              }
+            ])
           ]
         }
       ],
@@ -123,7 +126,7 @@ function renderCerebrasCurl({ model, imageCount, description }) {
     `curl -s ${API_URL} \\`,
     `  -H "Authorization: Bearer $CEREBRAS_API_KEY" \\`,
     `  -H "Content-Type: application/json" \\`,
-    `  -d '{"model":"${model}","messages":[{"role":"user","content":[{"type":"text","text":"${escapeForCommand(description).slice(0, 120)}..."}, ${imageCount} image_url parts]}]}'`
+    `  -d '{"model":"${model}","messages":[{"role":"user","content":[{"type":"text","text":"${escapeForCommand(description).slice(0, 120)}..."}, ${imageCount} labeled image_url parts]}]}'`
   ].join("\n");
 }
 

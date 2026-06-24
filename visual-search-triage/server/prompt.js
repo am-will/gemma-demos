@@ -10,6 +10,8 @@ ${description}
 Batch ${batchIndex + 1} of ${batchCount}. Images in this batch:
 ${imageList}
 
+Each image input is provided immediately after its filename label in the message. Use only the adjacent filename label for that image. Do not assign visual evidence from one image to another filename.
+
 Return only valid JSON with this exact shape:
 {
   "query": "the user's target description",
@@ -34,6 +36,7 @@ Return only valid JSON with this exact shape:
 
 Rules:
 - Include every image in either matches or misses.
+- Treat filename-image pairing as strict. If an image shows baseball, do not describe it as pizza because another nearby image shows pizza.
 - Use confidence from 0 to 1.
 - Rank only the matching images.
 - Prefer precise visible evidence over speculation.
