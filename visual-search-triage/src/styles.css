@@ -69,27 +69,6 @@ textarea {
   box-shadow: 4px 4px 0 var(--foreground);
 }
 
-.circle {
-  width: 9rem;
-  height: 9rem;
-  left: 3vw;
-  top: 9rem;
-  border-radius: 999px;
-  background: var(--tertiary);
-}
-
-.triangle {
-  width: 0;
-  height: 0;
-  right: 7vw;
-  top: 4rem;
-  border-left: 4rem solid transparent;
-  border-right: 4rem solid transparent;
-  border-bottom: 7rem solid var(--quaternary);
-  box-shadow: none;
-  filter: drop-shadow(4px 4px 0 var(--foreground));
-}
-
 .square {
   width: 6rem;
   height: 6rem;

@@ -363,8 +363,6 @@ function summarizeEvent(event) {
 function Decorations() {
   return (
     <div className="decorations" aria-hidden="true">
-      <span className="shape circle" />
-      <span className="shape triangle" />
       <span className="shape square" />
       <span className="shape pill" />
     </div>
