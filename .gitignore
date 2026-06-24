@@ -1,0 +1,15 @@
+.DS_Store
+.claude/
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+work/
+outputs/
+downloads/
+datasets/
+
+# car-damage is published from its own Git repo.
+/car-damage/
