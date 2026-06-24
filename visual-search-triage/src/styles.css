@@ -50,12 +50,17 @@ textarea {
   padding: 2rem 0 3rem;
 }
 
+.page-shell > :not(.decorations) {
+  position: relative;
+  z-index: 1;
+}
+
 .decorations {
   pointer-events: none;
   position: fixed;
   inset: 0;
   overflow: hidden;
-  z-index: -1;
+  z-index: 0;
 }
 
 .shape {
@@ -313,7 +318,7 @@ textarea:focus {
   background: white;
   border: 2px solid var(--foreground);
   border-radius: 0.75rem;
-  box-shadow: 4px 4px 0 #c4b5fd;
+  box-shadow: 4px 4px 0 var(--foreground);
   overflow: hidden;
 }
 
@@ -369,11 +374,11 @@ textarea:focus {
 }
 
 .agent-card.violet {
-  box-shadow: 7px 7px 0 #c4b5fd;
+  box-shadow: 7px 7px 0 var(--foreground);
 }
 
 .agent-card.pink {
-  box-shadow: 7px 7px 0 #f9a8d4;
+  box-shadow: 7px 7px 0 var(--foreground);
 }
 
 .agent-card header {
