@@ -4,7 +4,7 @@ import sharp from "sharp";
 
 const MAX_EDGE = Number(process.env.IMAGE_MAX_EDGE || 512);
 const JPEG_QUALITY = Number(process.env.IMAGE_JPEG_QUALITY || 64);
-const MAX_BATCH_IMAGES = Number(process.env.MAX_BATCH_IMAGES || 4);
+const MAX_BATCH_IMAGES = Number(process.env.MAX_BATCH_IMAGES || 5);
 const MAX_BATCH_BYTES = Number(process.env.MAX_BATCH_BYTES || 3 * 1024 * 1024);
 
 export async function prepareImages({ files, runDir, emit }) {

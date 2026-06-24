@@ -71,7 +71,7 @@ app.get("/api/health", (_req, res) => {
       }
     },
     batching: {
-      maxBatchImages: Number(process.env.MAX_BATCH_IMAGES || 4),
+      maxBatchImages: Number(process.env.MAX_BATCH_IMAGES || 5),
       maxBatchBytes: Number(process.env.MAX_BATCH_BYTES || 3 * 1024 * 1024),
       imageMaxEdge: Number(process.env.IMAGE_MAX_EDGE || 512)
     }
