@@ -70,6 +70,19 @@ function App() {
     previewUrlsRef.current = [];
   }
 
+  function handlePreviewWheel(event) {
+    const strip = event.currentTarget;
+    const canScrollHorizontally = strip.scrollWidth > strip.clientWidth;
+    if (!canScrollHorizontally) return;
+
+    const horizontalIntent = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    const delta = horizontalIntent ? event.deltaX : event.deltaY;
+    if (!delta) return;
+
+    event.preventDefault();
+    strip.scrollLeft += delta;
+  }
+
   async function startRun() {
     setError("");
     setEvents([]);
@@ -168,7 +181,7 @@ function App() {
 
       {previews.length ? (
         <div className="image-strip-shell">
-          <section className="image-strip" aria-label="Selected image previews">
+          <section className="image-strip" aria-label="Selected image previews" onWheel={handlePreviewWheel}>
             {previews.map((preview) => (
               <figure key={preview.url}>
                 <img src={preview.url} alt="" />
