@@ -12,7 +12,18 @@ function App() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [settings, setSettings] = useState({ sampleFps: 1, maxFrames: 40, confidenceFloor: 0.35, frameConcurrency: 4, tileConcurrency: 3 });
+  const [previewUrl, setPreviewUrl] = useState("");
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl("");
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
 
   useEffect(() => {
     if (!jobId) return undefined;
@@ -74,6 +85,15 @@ function App() {
     window.setTimeout(() => setCopied(false), 1600);
   }
 
+  function cuePreviewFrame(event) {
+    const video = event.currentTarget;
+    try {
+      video.currentTime = Math.min(0.1, Math.max(0, video.duration || 0));
+    } catch {
+      // Some browsers delay seeking until more video data is buffered.
+    }
+  }
+
   const statusTone = useMemo(() => {
     if (job?.status === "failed") return "bad";
     if (complete) return "good";
@@ -102,10 +122,23 @@ function App() {
 
       <section className="workbench">
         <div className="uploadPanel">
-          <button className="drop" onClick={() => inputRef.current?.click()} type="button">
-            <UploadCloud size={34} />
-            <strong>{file ? file.name : "Choose walkaround video"}</strong>
-            <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep hackathon demos under a minute for fast iteration."}</span>
+          <button className={`drop ${previewUrl ? "hasPreview" : ""}`} onClick={() => inputRef.current?.click()} type="button">
+            {previewUrl ? (
+              <video
+                className="dropPreview"
+                src={previewUrl}
+                muted
+                playsInline
+                preload="metadata"
+                onLoadedMetadata={cuePreviewFrame}
+                onLoadedData={(event) => event.currentTarget.pause()}
+              />
+            ) : null}
+            <span className="dropOverlay">
+              <UploadCloud className="dropIcon" size={34} />
+              <strong>{file ? file.name : "Choose walkaround video"}</strong>
+              <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep hackathon demos under a minute for fast iteration."}</span>
+            </span>
           </button>
           <input ref={inputRef} hidden type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} />
 

@@ -5,3 +5,4 @@ work/
 outputs/jobs/
 .DS_Store
 *.md
+!README.md

@@ -209,6 +209,7 @@ h1 .pop::after {
 }
 
 .drop {
+  position: relative;
   width: 100%;
   min-height: 220px;
   border: 2px dashed #cbd5e1;
@@ -221,6 +222,7 @@ h1 .pop::after {
   gap: 12px;
   cursor: pointer;
   text-align: center;
+  overflow: hidden;
   transition: all 220ms var(--bounce);
 }
 
@@ -231,7 +233,40 @@ h1 .pop::after {
   box-shadow: 4px 4px 0 0 var(--accent);
 }
 
-.drop > svg {
+.drop.hasPreview {
+  border-style: solid;
+  background: #0f172a;
+}
+
+.dropPreview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0f172a;
+  pointer-events: none;
+}
+
+.dropOverlay {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.drop.hasPreview .dropOverlay {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.72));
+  color: #fff;
+}
+
+.dropIcon {
   padding: 14px;
   border-radius: 9999px;
   background: var(--accent);
@@ -246,6 +281,10 @@ h1 .pop::after {
   color: var(--muted);
   line-height: 1.5;
   font-weight: 500;
+}
+
+.drop.hasPreview span span {
+  color: #dbeafe;
 }
 
 .controls {
