@@ -178,7 +178,7 @@ function App() {
             <span className="dropOverlay">
               <UploadCloud className="dropIcon" size={54} />
               <strong>{file ? file.name : "Choose walkaround video"}</strong>
-              <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep hackathon demos under a minute for fast iteration."}</span>
+              <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep videos under 60 seconds for fast iteration."}</span>
             </span>
           </button>
           <input ref={inputRef} hidden type="file" accept="video/*" onChange={handleFileChange} />

@@ -64,7 +64,7 @@ Defaults are conservative: `4` frame workers and `3` tile workers. Increase them
 ## Notes
 
 - The app does not perform damage detection locally. Local code only extracts frames, calls Cerebras, deduplicates results, and draws the model-provided boxes.
-- Keep `sample fps` and coverage frames bounded during hackathon demos. Good starting point: `0.5 fps`, `20 coverage frames`, `0.35 confidence floor`, `4 frame workers`, `3 tile workers`.
+- Keep videos under 60 seconds for fast iteration. Good starting point: `0.5 fps`, `20 coverage frames`, `0.35 confidence floor`, `4 frame workers`, `3 tile workers`.
 - Frame extraction defaults to `FRAME_EXTRACTION_MODE=sparse-sharp`, which seeks near target timestamps, scores blur with a sharpness metric, and retries nearby offsets only when a frame is too soft. Set `FRAME_EXTRACTION_MODE=single-pass` to use the slower full scan baseline.
 - Image quality is intentionally kept high for subtle damage detection: default frame width is `1920px`, extraction uses PNG candidates to avoid HDR/posterization artifacts, and final evidence JPEG quality is `92`. Lower these only when speed matters more than scratch/dent recall.
 - The dedupe logic is intentionally simple: it favors high-confidence findings and suppresses nearby repeated detections with overlapping labels, locations, or bounding boxes.
