@@ -209,6 +209,11 @@ h1 .pop::after {
   padding: 22px;
 }
 
+.uploadPanel {
+  padding-top: 25px;
+  padding-bottom: 25px;
+}
+
 .drop {
   position: relative;
   width: 100%;
