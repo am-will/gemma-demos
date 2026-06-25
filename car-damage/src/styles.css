@@ -196,7 +196,7 @@ h1 .pop::after {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
   margin: 34px 0;
 }
 
@@ -207,6 +207,11 @@ h1 .pop::after {
   border-radius: 24px;
   box-shadow: var(--shadow-lg);
   padding: 22px;
+}
+
+.progressPanel {
+  display: flex;
+  flex-direction: column;
 }
 
 .drop {
@@ -415,7 +420,9 @@ input:focus {
 }
 
 .processDashboard {
+  flex: 1;
   display: grid;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -424,8 +431,8 @@ input:focus {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  min-height: 46px;
-  padding: 8px 10px;
+  min-height: 54px;
+  padding: clamp(10px, 1.5vh, 18px) 12px;
   border: 2px solid var(--line-soft);
   border-radius: 12px;
   background: #f8fafc;
