@@ -232,19 +232,21 @@ function App() {
               </article>
             ))}
           </div>
-          <div className="resultActions">
-            <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
-              <FolderOpen size={16} />
-              Output folder
-            </a>
-          </div>
         </section>
       ) : null}
 
       <section className="report">
         <div className="sectionTitle">
           <h2>Damage Report</h2>
-          <span>{report ? `${report.totalDamageItems} item${report.totalDamageItems === 1 ? "" : "s"}` : "Waiting for analysis"}</span>
+          <div className="sectionActions">
+            <span>{report ? `${report.totalDamageItems} item${report.totalDamageItems === 1 ? "" : "s"}` : "Waiting for analysis"}</span>
+            {report ? (
+              <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
+                <FolderOpen size={16} />
+                Output folder
+              </a>
+            ) : null}
+          </div>
         </div>
 
         {complete && report ? (

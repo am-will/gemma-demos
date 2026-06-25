@@ -599,13 +599,15 @@ input:focus {
   box-shadow: 3px 3px 0 0 var(--ink);
 }
 
-.resultActions {
+.sectionActions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  margin-top: 22px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.resultActions a {
+.sectionActions a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -622,7 +624,7 @@ input:focus {
   transition: all 160ms var(--bounce);
 }
 
-.resultActions a:hover {
+.sectionActions a:hover {
   background: var(--amber);
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0 0 var(--ink);
