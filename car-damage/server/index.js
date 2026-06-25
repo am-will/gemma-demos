@@ -334,9 +334,7 @@ function summarizeDamageItems(items) {
   const byType = countBy(items, (item) => item.damageTypeLabel);
   const bySeverity = countBy(items, (item) => item.severity);
   const byVehiclePart = countBy(items, (item) => item.vehiclePart);
-  const headline = items.length
-    ? `Found ${items.length} unique damage candidate${items.length === 1 ? "" : "s"} across ${items.length} annotated evidence image${items.length === 1 ? "" : "s"}.`
-    : "No visible damage candidates were found above the confidence threshold.";
+  const headline = `Found ${items.length} unique damage candidate${items.length === 1 ? "" : "s"}`;
   return { headline, byType, bySeverity, byVehiclePart };
 }
 

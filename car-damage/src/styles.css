@@ -273,11 +273,11 @@ h1 .pop::after {
 }
 
 .dropIcon {
-  padding: 14px;
+  padding: 15px;
   border-radius: 9999px;
   background: var(--accent);
   color: #fff;
-  box-shadow: 3px 3px 0 0 var(--ink);
+  box-shadow: 4px 4px 0 0 var(--ink);
 }
 
 .drop strong { font-size: 22px; font-weight: 700; }
@@ -853,7 +853,8 @@ h3 {
 
 .reportStats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(180px, 240px);
+  justify-content: end;
   gap: 12px;
 }
 
@@ -1018,6 +1019,11 @@ h3 {
 
   .reportHeader {
     grid-template-columns: 1fr;
+  }
+
+  .reportStats {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
   }
 }
 

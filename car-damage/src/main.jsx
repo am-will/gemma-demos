@@ -153,7 +153,7 @@ function App() {
         <div>
           <p className="eyebrow">Rental fleet intake</p>
           <h1>Damage <span className="pop">Scout</span></h1>
-          <p className="lede">Upload a walkaround video. Gemma 4 samples the full pass around the car, finds scratches, scuffs, dents, chips, and cracks, then returns deduplicated annotated evidence stills.</p>
+          <p className="lede">Upload a walkaround video of your car, and Gemma 4 will annotate the damage.</p>
         </div>
         <div className={`status ${statusTone}`}>
           <Gauge size={18} />
@@ -176,7 +176,7 @@ function App() {
               />
             ) : null}
             <span className="dropOverlay">
-              <UploadCloud className="dropIcon" size={34} />
+              <UploadCloud className="dropIcon" size={54} />
               <strong>{file ? file.name : "Choose walkaround video"}</strong>
               <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep hackathon demos under a minute for fast iteration."}</span>
             </span>
@@ -286,12 +286,10 @@ function App() {
             <div className="reportHeader">
               <div>
                 <p className="reportKicker">{report.sourceVideo || "Uploaded video"}</p>
-                <h3>{report.summary?.headline || "Damage inspection complete."}</h3>
+                <h3>{report.summary?.headline || `Found ${report.totalDamageItems} unique damage candidate${report.totalDamageItems === 1 ? "" : "s"}`}</h3>
               </div>
               <div className="reportStats">
                 <Stat label="Damage items" value={report.totalDamageItems} />
-                <Stat label="Images tagged" value={report.imagesWithDamage} />
-                <Stat label="Sampled" value={report.sampledFrames} />
               </div>
             </div>
 
