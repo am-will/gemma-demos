@@ -23,6 +23,7 @@ const model = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
 const port = Number(process.env.PORT || 8787);
 const extractionMaxWidth = Number(process.env.FRAME_EXTRACTION_MAX_WIDTH || 1280);
 const extractionJpegQuality = Number(process.env.FRAME_EXTRACTION_JPEG_QUALITY || 5);
+const ffmpegHwaccel = process.env.FFMPEG_HWACCEL || (process.platform === "darwin" ? "videotoolbox" : "auto");
 
 await Promise.all([mkdir(uploadsDir, { recursive: true }), mkdir(tmpDir, { recursive: true }), mkdir(outputsDir, { recursive: true })]);
 
@@ -53,8 +54,8 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
   }
 
   const jobId = nanoid(10);
-  const sampleFps = clampNumber(req.body.sampleFps, 0.2, 3, 1);
-  const maxFrames = clampNumber(req.body.maxFrames, 1, 80, 28);
+  const sampleFps = clampNumber(req.body.sampleFps, 0.2, 3, 0.5);
+  const maxFrames = clampNumber(req.body.maxFrames, 1, 80, 20);
   const confidenceFloor = clampNumber(req.body.confidenceFloor, 0, 1, 0.35);
   const frameConcurrency = clampInteger(req.body.frameConcurrency, 1, 8, 4);
   const tileConcurrency = clampInteger(req.body.tileConcurrency, 1, 6, 3);
@@ -343,7 +344,7 @@ function buildPipeline() {
   return [
     { key: "upload", label: "Upload", status: "pending", detail: "Waiting for video", progress: 0 },
     { key: "extract", label: "Extract frames", status: "pending", detail: "Waiting for upload", progress: 0 },
-    { key: "inspect", label: "Model inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
+    { key: "inspect", label: "Gemma 4 Inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
     { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
     { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
     { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }
@@ -379,13 +380,14 @@ async function extractFrames(videoPath, framesDir, sampleFps, maxFrames, onProgr
   const duration = await probeDuration(videoPath);
   const effectiveFps = duration > 0 ? Math.min(sampleFps, maxFrames / duration) : sampleFps;
   const frameIntervalSeconds = effectiveFps > 0 ? 1 / effectiveFps : 1 / sampleFps;
-  await runFfmpeg([
+  const ffmpegArgs = (useHardwareDecode) => [
     "-nostdin",
     "-hide_banner",
     "-loglevel",
     "error",
     "-threads",
     "0",
+    ...(useHardwareDecode ? ["-hwaccel", ffmpegHwaccel] : []),
     "-i",
     videoPath,
     "-vf",
@@ -402,7 +404,17 @@ async function extractFrames(videoPath, framesDir, sampleFps, maxFrames, onProgr
     "pipe:1",
     "-nostats",
     path.join(framesDir, "frame-%05d.jpg")
-  ], { duration, maxFrames, onProgress });
+  ];
+
+  try {
+    await runFfmpeg(ffmpegArgs(true), { duration, maxFrames, onProgress });
+  } catch (error) {
+    await rm(framesDir, { recursive: true, force: true });
+    await mkdir(framesDir, { recursive: true });
+    onProgress?.({ progress: 0, detail: "Hardware decode unavailable, retrying standard extraction" });
+    await runFfmpeg(ffmpegArgs(false), { duration, maxFrames, onProgress });
+  }
+
   return {
     durationSeconds: duration ? Number(duration.toFixed(2)) : null,
     requestedSampleFps: sampleFps,
@@ -410,7 +422,8 @@ async function extractFrames(videoPath, framesDir, sampleFps, maxFrames, onProgr
     frameIntervalSeconds: Number(frameIntervalSeconds.toFixed(2)),
     maxFrames,
     extractionMaxWidth,
-    extractionJpegQuality
+    extractionJpegQuality,
+    ffmpegHwaccel
   };
 }
 

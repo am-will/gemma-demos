@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, CheckCircle2, Clipboard, Copy, Film, FolderOpen, Gauge, Search, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clipboard, Copy, Film, FolderOpen, Gauge, Hourglass, Search, UploadCloud } from "lucide-react";
 import "./styles.css";
 
 const api = "";
@@ -11,7 +11,7 @@ function App() {
   const [job, setJob] = useState(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [settings, setSettings] = useState({ sampleFps: 1, maxFrames: 40, confidenceFloor: 0.35, frameConcurrency: 4, tileConcurrency: 3 });
+  const [settings, setSettings] = useState({ sampleFps: 0.5, maxFrames: 20, confidenceFloor: 0.35, frameConcurrency: 4, tileConcurrency: 3 });
   const [previewUrl, setPreviewUrl] = useState("");
   const inputRef = useRef(null);
 
@@ -205,6 +205,42 @@ function App() {
         </div>
       </section>
 
+      {complete ? (
+        <section className="results">
+          <div className="sectionTitle">
+            <h2>Evidence Frames</h2>
+            <span>{`${detections.length} selected`}</span>
+          </div>
+
+          {detections.length === 0 ? (
+            <div className="empty"><CheckCircle2 size={28} />No visible damage candidates above the confidence threshold.</div>
+          ) : null}
+
+          <div className="cards">
+            {detections.map((item, index) => (
+              <article className="card" key={`${item.frameNumber}-${item.label}-${index}`}>
+                <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} />
+                <div className="cardBody">
+                  <div className="cardTop">
+                    <h3>{item.label}</h3>
+                    <span>{Math.round(item.confidence * 100)}%</span>
+                  </div>
+                  <p>{item.location} · {item.severity}</p>
+                  <p className="evidence">{item.evidence}</p>
+                  <small>{item.imageLabel || `Image ${index + 1}`} · Frame {item.frameNumber}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="resultActions">
+            <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
+              <FolderOpen size={16} />
+              Output folder
+            </a>
+          </div>
+        </section>
+      ) : null}
+
       <section className="report">
         <div className="sectionTitle">
           <h2>Damage Report</h2>
@@ -272,46 +308,10 @@ function App() {
           </div>
         ) : (
           <div className="reportPlaceholder">
-            <Clipboard size={28} />
+            <Hourglass size={48} strokeWidth={2.25} />
             <span>Final report appears here after the video inspection completes.</span>
           </div>
         )}
-      </section>
-
-      <section className="results">
-        <div className="sectionTitle">
-          <h2>Evidence Frames</h2>
-          <span>{complete ? `${detections.length} selected` : "Waiting for analysis"}</span>
-        </div>
-
-        {complete && detections.length === 0 ? (
-          <div className="empty"><CheckCircle2 size={28} />No visible damage candidates above the confidence threshold.</div>
-        ) : null}
-
-        <div className="cards">
-          {detections.map((item, index) => (
-            <article className="card" key={`${item.frameNumber}-${item.label}-${index}`}>
-              <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} />
-              <div className="cardBody">
-                <div className="cardTop">
-                  <h3>{item.label}</h3>
-                  <span>{Math.round(item.confidence * 100)}%</span>
-                </div>
-                <p>{item.location} · {item.severity}</p>
-                <p className="evidence">{item.evidence}</p>
-                <small>{item.imageLabel || `Image ${index + 1}`} · Frame {item.frameNumber}</small>
-              </div>
-            </article>
-          ))}
-        </div>
-        {complete ? (
-          <div className="resultActions">
-            <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
-              <FolderOpen size={16} />
-              Output folder
-            </a>
-          </div>
-        ) : null}
       </section>
     </main>
   );
@@ -373,7 +373,7 @@ function uploadAnalysis(form, onUploadProgress) {
 function makeIdlePipeline() {
   return [
     { key: "extract", label: "Extract frames", status: "pending", detail: "Waiting for upload", progress: 0 },
-    { key: "inspect", label: "Model inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
+    { key: "inspect", label: "Gemma 4 Inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
     { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
     { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
     { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }

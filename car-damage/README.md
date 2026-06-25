@@ -64,6 +64,6 @@ Defaults are conservative: `4` frame workers and `3` tile workers. Increase them
 ## Notes
 
 - The app does not perform damage detection locally. Local code only extracts frames, calls Cerebras, deduplicates results, and draws the model-provided boxes.
-- Keep `sample fps` and coverage frames bounded during hackathon demos. Good starting point: `1 fps`, `40 coverage frames`, `0.35 confidence floor`, `4 frame workers`, `3 tile workers`.
+- Keep `sample fps` and coverage frames bounded during hackathon demos. Good starting point: `0.5 fps`, `20 coverage frames`, `0.35 confidence floor`, `4 frame workers`, `3 tile workers`.
 - The dedupe logic is intentionally simple: it favors high-confidence findings and suppresses nearby repeated detections with overlapping labels, locations, or bounding boxes.
 - Agent-specific maintenance instructions live in `AGENTS.md`.

@@ -526,6 +526,17 @@ input:focus {
   to { transform: scale(1.1); }
 }
 
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -638,6 +649,7 @@ input:focus {
 .results {
   position: relative;
   z-index: 1;
+  animation: popIn 360ms var(--bounce) both;
 }
 
 .sectionTitle {
@@ -680,8 +692,15 @@ h2 {
   background: var(--card);
   overflow: hidden;
   box-shadow: var(--shadow);
+  animation: popIn 380ms var(--bounce) both;
   transition: transform 240ms var(--bounce), box-shadow 240ms var(--bounce);
 }
+
+.card:nth-child(2) { animation-delay: 45ms; }
+.card:nth-child(3) { animation-delay: 90ms; }
+.card:nth-child(4) { animation-delay: 135ms; }
+.card:nth-child(5) { animation-delay: 180ms; }
+.card:nth-child(n + 6) { animation-delay: 225ms; }
 
 .card:hover {
   transform: rotate(-1deg) translateY(-4px);
@@ -802,6 +821,7 @@ h3 {
   padding: 22px;
   display: grid;
   gap: 22px;
+  animation: popIn 380ms var(--bounce) both;
 }
 
 .reportHeader {
@@ -871,6 +891,15 @@ h3 {
   border-bottom: none;
 }
 
+.reportTable tbody tr {
+  animation: popIn 300ms var(--bounce) both;
+}
+
+.reportTable tbody tr:nth-child(2) { animation-delay: 40ms; }
+.reportTable tbody tr:nth-child(3) { animation-delay: 80ms; }
+.reportTable tbody tr:nth-child(4) { animation-delay: 120ms; }
+.reportTable tbody tr:nth-child(n + 5) { animation-delay: 160ms; }
+
 .reportTable td {
   color: var(--ink);
   font-weight: 600;
@@ -908,6 +937,7 @@ h3 {
   border-radius: 16px;
   background: #111827;
   overflow: hidden;
+  animation: popIn 360ms var(--bounce) 120ms both;
 }
 
 .copyHeader {
@@ -967,10 +997,14 @@ h3 {
 }
 
 .reportPlaceholder svg {
-  padding: 12px;
-  border-radius: 9999px;
+  width: 58px;
+  height: 58px;
+  padding: 13px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
   background: var(--accent);
   color: #fff;
+  box-shadow: 3px 3px 0 0 var(--ink);
 }
 
 /* ---------- Responsive ---------- */
@@ -1035,6 +1069,10 @@ h3 {
   .primary,
   .drop,
   .downloads a,
+  .results,
+  .reportSurface,
+  .reportTable tbody tr,
+  .copyBlock,
   .processStep.active .processDot {
     transition: none !important;
     animation: none !important;
