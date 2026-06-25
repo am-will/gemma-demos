@@ -42,13 +42,13 @@ function App() {
   const busy = job && !["complete", "failed"].includes(job.status);
   const reportText = useMemo(() => (report ? formatReportText(report) : ""), [report]);
 
-  async function startAnalysis() {
-    if (!file || busy) return;
+  async function startAnalysis(selectedFile = file) {
+    if (!selectedFile || busy) return;
     setError("");
     setJob(makeUploadJob(0));
     setJobId(null);
     const form = new FormData();
-    form.append("video", file);
+    form.append("video", selectedFile);
     form.append("sampleFps", settings.sampleFps);
     form.append("maxFrames", settings.maxFrames);
     form.append("confidenceFloor", settings.confidenceFloor);
@@ -72,6 +72,14 @@ function App() {
     setJobId(data.jobId);
     setJob({ status: "queued", progress: 3, message: "Queued video inspection", pipeline: makeUploadPipeline(100, "complete") });
     setCopied(false);
+  }
+
+  function handleFileChange(event) {
+    const selectedFile = event.target.files?.[0] || null;
+    setFile(selectedFile);
+    if (selectedFile) {
+      startAnalysis(selectedFile);
+    }
   }
 
   async function copyReport() {
@@ -148,7 +156,7 @@ function App() {
               <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep hackathon demos under a minute for fast iteration."}</span>
             </span>
           </button>
-          <input ref={inputRef} hidden type="file" accept="video/*" onChange={(event) => setFile(event.target.files?.[0] || null)} />
+          <input ref={inputRef} hidden type="file" accept="video/*" onChange={handleFileChange} />
 
           <div className="controls">
             <label>
