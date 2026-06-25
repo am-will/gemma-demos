@@ -39,10 +39,11 @@ function App() {
   const detections = job?.result?.detections || [];
   const report = job?.result?.report || null;
   const complete = job?.status === "complete";
-  const busy = job && !["complete", "failed"].includes(job.status);
+  const extractionReady = job?.status === "extracted";
+  const busy = job && !["complete", "failed", "extracted"].includes(job.status);
   const reportText = useMemo(() => (report ? formatReportText(report) : ""), [report]);
 
-  async function startAnalysis(selectedFile = file) {
+  async function startExtraction(selectedFile = file) {
     if (!selectedFile || busy) return;
     setError("");
     setJob(makeUploadJob(0));
@@ -74,11 +75,35 @@ function App() {
     setCopied(false);
   }
 
+  async function startInspection() {
+    if (!jobId || !extractionReady || busy) return;
+    setError("");
+    try {
+      await continueAnalysis(jobId);
+      setJob((current) => ({
+        ...current,
+        status: "inspecting",
+        message: "Gemma inspection starting",
+        progress: Math.max(current?.progress || 0, 18)
+      }));
+    } catch (inspectionError) {
+      const message = inspectionError instanceof Error ? inspectionError.message : "Inspection failed";
+      setError(message);
+      setJob((current) => ({
+        ...current,
+        status: "failed",
+        error: message,
+        message,
+        pipeline: current?.pipeline || makeUploadPipeline(100, "complete")
+      }));
+    }
+  }
+
   function handleFileChange(event) {
     const selectedFile = event.target.files?.[0] || null;
     setFile(selectedFile);
     if (selectedFile) {
-      startAnalysis(selectedFile);
+      startExtraction(selectedFile);
     }
   }
 
@@ -181,9 +206,9 @@ function App() {
             </label>
           </div>
 
-          <button className="primary" disabled={!file || busy} onClick={startAnalysis} type="button">
+          <button className="primary" disabled={!file || busy || (job && !extractionReady && !["complete", "failed"].includes(job.status))} onClick={extractionReady ? startInspection : () => startExtraction()} type="button">
             <Search size={18} />
-            <span>{busy ? "Inspecting..." : "Run Gemma inspection"}</span>
+            <span>{busy ? "Working..." : extractionReady ? "Run Gemma inspection" : "Extract frames"}</span>
           </button>
           {error ? <p className="error"><AlertTriangle size={16} />{error}</p> : null}
         </div>
@@ -377,6 +402,15 @@ function uploadAnalysis(form, onUploadProgress) {
     xhr.onerror = () => reject(new Error("Upload failed"));
     xhr.send(form);
   });
+}
+
+async function continueAnalysis(jobId) {
+  const response = await fetch(`${api}/api/jobs/${jobId}/inspect`, { method: "POST" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Inspection failed");
+  }
+  return data;
 }
 
 function makeIdlePipeline() {

@@ -76,7 +76,26 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
   jobs.set(jobId, job);
   res.status(202).json({ jobId });
 
-  processVideoJob(job, req.file.path, req.file.originalname).catch((error) => {
+  processExtractionJob(job, req.file.path, req.file.originalname).catch((error) => {
+    job.status = "failed";
+    job.error = error instanceof Error ? error.message : String(error);
+    job.message = "Frame extraction failed";
+    failActivePipelineStep(job, job.error);
+  });
+});
+
+app.post("/api/jobs/:jobId/inspect", (req, res) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: "Unknown job" });
+    return;
+  }
+  if (job.status !== "extracted") {
+    res.status(409).json({ error: `Job is ${job.status}; it must be extracted before Gemma inspection can start.` });
+    return;
+  }
+  res.status(202).json({ jobId: job.id });
+  continueInspectionJob(job).catch((error) => {
     job.status = "failed";
     job.error = error instanceof Error ? error.message : String(error);
     job.message = "Analysis failed";
@@ -90,7 +109,8 @@ app.get("/api/jobs/:jobId", (req, res) => {
     res.status(404).json({ error: "Unknown job" });
     return;
   }
-  res.json(job);
+  const { internal: _internal, ...publicJob } = job;
+  res.json(publicJob);
 });
 
 app.get("/api/jobs/:jobId/download", (req, res) => {
@@ -107,7 +127,7 @@ app.listen(port, "127.0.0.1", () => {
   console.log(`Damage Scout API listening on http://127.0.0.1:${port}`);
 });
 
-async function processVideoJob(job, videoPath, originalName) {
+async function processExtractionJob(job, videoPath, originalName) {
   const jobTmp = path.join(tmpDir, job.id);
   const jobOut = path.join(outputsDir, job.id);
   const framesDir = path.join(jobTmp, "frames");
@@ -143,6 +163,20 @@ async function processVideoJob(job, videoPath, originalName) {
     progress: 1,
     elapsedMs: Date.now() - extractionStartedAt
   });
+
+  job.status = "extracted";
+  job.progress = 18;
+  job.message = `Extracted ${frameFiles.length} frame${frameFiles.length === 1 ? "" : "s"}. Ready for Gemma inspection.`;
+  job.internal = { videoPath, originalName, jobTmp, jobOut, framesDir, frameFiles, extraction };
+}
+
+async function continueInspectionJob(job) {
+  const { videoPath, originalName, jobTmp, jobOut, framesDir, frameFiles, extraction } = job.internal || {};
+  if (!framesDir || !jobOut || !Array.isArray(frameFiles) || !extraction) {
+    throw new Error("Extracted frame data is missing. Upload the video again.");
+  }
+
+  job.status = "inspecting";
   const inspectionStartedAt = Date.now();
   setPipelineStep(job, "inspect", "active", `0 of ${frameFiles.length} frames inspected`, { progress: 0 });
   job.message = `Gemma is inspecting ${frameFiles.length} sampled frames with ${job.settings.frameConcurrency} parallel workers`;
@@ -249,6 +283,7 @@ async function processVideoJob(job, videoPath, originalName) {
   job.progress = 100;
   job.message = annotated.length ? `Found ${annotated.length} unique damage candidate${annotated.length === 1 ? "" : "s"}` : "No visible damage candidates found";
   job.result = { ...manifest, manifestUrl: `/outputs/jobs/${job.id}/manifest.json` };
+  delete job.internal;
 }
 
 function buildDamageReport({ jobId, originalName, model, settings, extraction, sampledFrames, detections }) {
