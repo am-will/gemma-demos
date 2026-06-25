@@ -24,6 +24,9 @@ const port = Number(process.env.PORT || 8787);
 const extractionMaxWidth = Number(process.env.FRAME_EXTRACTION_MAX_WIDTH || 1280);
 const extractionJpegQuality = Number(process.env.FRAME_EXTRACTION_JPEG_QUALITY || 5);
 const ffmpegHwaccel = process.env.FFMPEG_HWACCEL || (process.platform === "darwin" ? "videotoolbox" : "auto");
+const extractionMode = process.env.FRAME_EXTRACTION_MODE || "sparse-sharp";
+const extractionSeekWorkers = clampInteger(process.env.FRAME_EXTRACTION_SEEK_WORKERS, 1, 8, 4);
+const extractionBlurThreshold = Number(process.env.FRAME_EXTRACTION_BLUR_THRESHOLD || 85);
 
 await Promise.all([mkdir(uploadsDir, { recursive: true }), mkdir(tmpDir, { recursive: true }), mkdir(outputsDir, { recursive: true })]);
 
@@ -65,7 +68,7 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
     progress: 0,
     message: "Queued video inspection",
     createdAt: new Date().toISOString(),
-    settings: { sampleFps, maxFrames, confidenceFloor, frameConcurrency, tileConcurrency, model, extractionMaxWidth, extractionJpegQuality },
+    settings: { sampleFps, maxFrames, confidenceFloor, frameConcurrency, tileConcurrency, model, extractionMaxWidth, extractionJpegQuality, extractionMode },
     pipeline: buildPipeline(),
     result: null,
     error: null
@@ -380,6 +383,142 @@ async function extractFrames(videoPath, framesDir, sampleFps, maxFrames, onProgr
   const duration = await probeDuration(videoPath);
   const effectiveFps = duration > 0 ? Math.min(sampleFps, maxFrames / duration) : sampleFps;
   const frameIntervalSeconds = effectiveFps > 0 ? 1 / effectiveFps : 1 / sampleFps;
+  if (extractionMode === "sparse-sharp") {
+    return extractSparseSharpFrames(videoPath, framesDir, {
+      duration,
+      sampleFps,
+      effectiveFps,
+      frameIntervalSeconds,
+      maxFrames,
+      onProgress
+    });
+  }
+
+  await extractFramesSinglePass(videoPath, framesDir, { duration, effectiveFps, maxFrames, onProgress });
+
+  return {
+    durationSeconds: duration ? Number(duration.toFixed(2)) : null,
+    requestedSampleFps: sampleFps,
+    effectiveSampleFps: Number(effectiveFps.toFixed(3)),
+    frameIntervalSeconds: Number(frameIntervalSeconds.toFixed(2)),
+    maxFrames,
+    extractionMode: "single-pass",
+    extractionMaxWidth,
+    extractionJpegQuality,
+    ffmpegHwaccel
+  };
+}
+
+async function extractSparseSharpFrames(videoPath, framesDir, { duration, sampleFps, effectiveFps, frameIntervalSeconds, maxFrames, onProgress }) {
+  const targetCount = duration > 0 ? Math.min(maxFrames, Math.max(1, Math.ceil(duration * effectiveFps))) : maxFrames;
+  const timestamps = Array.from({ length: targetCount }, (_, index) => {
+    const centered = index * frameIntervalSeconds + frameIntervalSeconds / 2;
+    return Math.max(0, duration > 0 ? Math.min(duration - 0.05, centered) : index * frameIntervalSeconds);
+  });
+  let blurRetries = 0;
+  let hardwareFallbacks = 0;
+  const sharpnessScores = [];
+
+  onProgress?.({ progress: 0, detail: `Seeking ${timestamps.length} target frames` });
+
+  await mapWithConcurrency(timestamps, extractionSeekWorkers, async (timestamp, index) => {
+    const outputPath = path.join(framesDir, `frame-${String(index + 1).padStart(5, "0")}.jpg`);
+    const result = await extractSharpFrameAtTimestamp(videoPath, outputPath, timestamp, duration, index + 1);
+    blurRetries += result.blurRetries;
+    hardwareFallbacks += result.hardwareFallbacks;
+    sharpnessScores.push(result.sharpness);
+    return result;
+  }, (completed, total) => {
+    onProgress?.({
+      progress: total ? completed / total : 1,
+      detail: `Seeked ${completed} of ${total} target frames`
+    });
+  });
+
+  return {
+    durationSeconds: duration ? Number(duration.toFixed(2)) : null,
+    requestedSampleFps: sampleFps,
+    effectiveSampleFps: Number(effectiveFps.toFixed(3)),
+    frameIntervalSeconds: Number(frameIntervalSeconds.toFixed(2)),
+    maxFrames,
+    extractedFrames: timestamps.length,
+    extractionMode: "sparse-sharp",
+    extractionSeekWorkers,
+    extractionBlurThreshold,
+    blurRetries,
+    averageSharpness: average(sharpnessScores),
+    hardwareFallbacks,
+    extractionMaxWidth,
+    extractionJpegQuality,
+    ffmpegHwaccel
+  };
+}
+
+async function extractSharpFrameAtTimestamp(videoPath, outputPath, targetTimestamp, duration, frameNumber) {
+  const offsets = [0, -0.25, 0.25, -0.5, 0.5, -0.75, 0.75];
+  let best = null;
+  let blurRetries = 0;
+  let hardwareFallbacks = 0;
+
+  for (const [offsetIndex, offset] of offsets.entries()) {
+    const timestamp = clampTimestamp(targetTimestamp + offset, duration);
+    const candidatePath = `${outputPath}.candidate-${offsetIndex}.jpg`;
+    const usedFallback = await extractSingleSeekFrame(videoPath, candidatePath, timestamp);
+    hardwareFallbacks += usedFallback ? 1 : 0;
+    const sharpness = await scoreImageSharpness(candidatePath);
+    if (!best || sharpness > best.sharpness) {
+      if (best?.path && best.path !== candidatePath) await rm(best.path, { force: true });
+      best = { path: candidatePath, sharpness, timestamp };
+    } else {
+      await rm(candidatePath, { force: true });
+    }
+
+    if (sharpness >= extractionBlurThreshold) break;
+    blurRetries += 1;
+  }
+
+  if (!best) throw new Error(`Could not extract frame ${frameNumber}.`);
+  await sharp(best.path).jpeg({ quality: extractionJpegQuality }).toFile(outputPath);
+  await rm(best.path, { force: true });
+  return { frameNumber, timestamp: best.timestamp, sharpness: Math.round(best.sharpness), blurRetries, hardwareFallbacks };
+}
+
+async function extractSingleSeekFrame(videoPath, outputPath, timestamp) {
+  const buildArgs = (useHardwareDecode) => [
+    "-nostdin",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-threads",
+    "0",
+    "-ss",
+    timestamp.toFixed(3),
+    ...(useHardwareDecode ? ["-hwaccel", ffmpegHwaccel] : []),
+    "-i",
+    videoPath,
+    "-frames:v",
+    "1",
+    "-vf",
+    `scale='min(${extractionMaxWidth},iw)':-2:flags=fast_bilinear`,
+    "-q:v",
+    String(extractionJpegQuality),
+    "-pix_fmt",
+    "yuvj420p",
+    "-y",
+    outputPath
+  ];
+
+  try {
+    await runFfmpeg(buildArgs(true));
+    return false;
+  } catch (_error) {
+    await rm(outputPath, { force: true });
+    await runFfmpeg(buildArgs(false));
+    return true;
+  }
+}
+
+async function extractFramesSinglePass(videoPath, framesDir, { duration, effectiveFps, maxFrames, onProgress }) {
   const ffmpegArgs = (useHardwareDecode) => [
     "-nostdin",
     "-hide_banner",
@@ -414,17 +553,6 @@ async function extractFrames(videoPath, framesDir, sampleFps, maxFrames, onProgr
     onProgress?.({ progress: 0, detail: "Hardware decode unavailable, retrying standard extraction" });
     await runFfmpeg(ffmpegArgs(false), { duration, maxFrames, onProgress });
   }
-
-  return {
-    durationSeconds: duration ? Number(duration.toFixed(2)) : null,
-    requestedSampleFps: sampleFps,
-    effectiveSampleFps: Number(effectiveFps.toFixed(3)),
-    frameIntervalSeconds: Number(frameIntervalSeconds.toFixed(2)),
-    maxFrames,
-    extractionMaxWidth,
-    extractionJpegQuality,
-    ffmpegHwaccel
-  };
 }
 
 function runFfmpeg(args, { duration, maxFrames, onProgress } = {}) {
@@ -831,6 +959,46 @@ function clampNumber(value, min, max, fallback) {
 
 function clampInteger(value, min, max, fallback) {
   return Math.round(clampNumber(value, min, max, fallback));
+}
+
+function clampTimestamp(value, duration) {
+  if (!Number.isFinite(value)) return 0;
+  if (!duration || duration <= 0) return Math.max(0, value);
+  return Math.max(0, Math.min(duration - 0.05, value));
+}
+
+function average(values) {
+  const valid = values.filter((value) => Number.isFinite(value));
+  if (!valid.length) return null;
+  return Math.round(valid.reduce((total, value) => total + value, 0) / valid.length);
+}
+
+async function scoreImageSharpness(imagePath) {
+  const { data, info } = await sharp(imagePath)
+    .greyscale()
+    .resize({ width: 320, withoutEnlargement: true })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  if (info.width < 3 || info.height < 3) return 0;
+  let sum = 0;
+  let sumSquares = 0;
+  let count = 0;
+  for (let y = 1; y < info.height - 1; y += 1) {
+    for (let x = 1; x < info.width - 1; x += 1) {
+      const center = data[y * info.width + x] * 4;
+      const laplacian = center
+        - data[y * info.width + x - 1]
+        - data[y * info.width + x + 1]
+        - data[(y - 1) * info.width + x]
+        - data[(y + 1) * info.width + x];
+      sum += laplacian;
+      sumSquares += laplacian * laplacian;
+      count += 1;
+    }
+  }
+  const mean = sum / count;
+  return sumSquares / count - mean * mean;
 }
 
 async function mapWithConcurrency(items, concurrency, worker, onProgress) {
