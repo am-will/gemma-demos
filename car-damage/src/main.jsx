@@ -238,15 +238,14 @@ function App() {
       <section className="report">
         <div className="sectionTitle">
           <h2>Damage Report</h2>
-          <div className="sectionActions">
-            <span>{report ? `${report.totalDamageItems} item${report.totalDamageItems === 1 ? "" : "s"}` : "Waiting for analysis"}</span>
-            {report ? (
+          {report ? (
+            <div className="sectionActions">
               <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
                 <FolderOpen size={16} />
                 Output folder
               </a>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
 
         {complete && report ? (
