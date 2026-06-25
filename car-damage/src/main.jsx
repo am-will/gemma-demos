@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, CheckCircle2, Clipboard, Copy, Download, FileText, Film, FolderOpen, Gauge, Search, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clipboard, Copy, Film, Gauge, Search, UploadCloud } from "lucide-react";
 import "./styles.css";
 
 const api = "";
@@ -45,7 +45,7 @@ function App() {
   async function startAnalysis() {
     if (!file || busy) return;
     setError("");
-    setJob(null);
+    setJob(makeUploadJob(0));
     setJobId(null);
     const form = new FormData();
     form.append("video", file);
@@ -55,14 +55,22 @@ function App() {
     form.append("frameConcurrency", settings.frameConcurrency);
     form.append("tileConcurrency", settings.tileConcurrency);
 
-    const response = await fetch(`${api}/api/analyze`, { method: "POST", body: form });
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error || "Upload failed");
+    let data;
+    try {
+      data = await uploadAnalysis(form, (percent) => setJob(makeUploadJob(percent)));
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : "Upload failed";
+      setError(message);
+      setJob({
+        status: "failed",
+        progress: 0,
+        message,
+        pipeline: makeUploadPipeline(0, "failed")
+      });
       return;
     }
     setJobId(data.jobId);
-    setJob({ status: "queued", progress: 0, message: "Queued video inspection" });
+    setJob({ status: "queued", progress: 3, message: "Queued video inspection", pipeline: makeUploadPipeline(100, "complete") });
     setCopied(false);
   }
 
@@ -179,18 +187,18 @@ function App() {
             <strong>{job?.progress || 0}%</strong>
           </div>
           <div className="meter"><div style={{ width: `${job?.progress || 0}%` }} /></div>
-          <div className="summaryGrid">
-            <Stat label="Sampled" value={job?.result?.sampledFrames ?? "--"} />
-            <Stat label="Unique damage" value={complete ? detections.length : "--"} />
-            <Stat label="Model" value={job?.settings?.model || "gemma-4-31b-trial"} />
+          <div className="processDashboard">
+            {(job?.pipeline || makeIdlePipeline()).map((step) => (
+              <div className={`processStep ${step.status}`} key={step.key}>
+                <span className="processDot" aria-hidden="true" />
+                <div className="processCopy">
+                  <strong>{step.label}</strong>
+                  <span>{step.detail}</span>
+                </div>
+                <small>{formatStepMeta(step)}</small>
+              </div>
+            ))}
           </div>
-          {complete ? (
-            <div className="downloads">
-              <a href={job.result.manifestUrl} target="_blank" rel="noreferrer"><Download size={16} /> Manifest</a>
-              {job.result.reportMarkdownUrl ? <a href={job.result.reportMarkdownUrl} target="_blank" rel="noreferrer"><FileText size={16} /> Report</a> : null}
-              <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer"><FolderOpen size={16} /> Output folder</a>
-            </div>
-          ) : null}
           {job?.status === "failed" ? <p className="error"><AlertTriangle size={16} />{job.error}</p> : null}
         </div>
       </section>
@@ -326,6 +334,74 @@ function formatReportText(report) {
   });
 
   return lines.join("\n");
+}
+
+function uploadAnalysis(form, onUploadProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${api}/api/analyze`);
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onUploadProgress?.(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => {
+      let data = {};
+      try {
+        data = JSON.parse(xhr.responseText || "{}");
+      } catch {
+        reject(new Error("Upload returned an invalid response"));
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new Error(data.error || "Upload failed"));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.send(form);
+  });
+}
+
+function makeIdlePipeline() {
+  return [
+    { key: "upload", label: "Upload", status: "pending", detail: "Choose a video", progress: 0 },
+    { key: "extract", label: "Extract frames", status: "pending", detail: "Waiting for upload", progress: 0 },
+    { key: "inspect", label: "Model inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
+    { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
+    { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
+    { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }
+  ];
+}
+
+function makeUploadPipeline(percent, status = "active") {
+  const pipeline = makeIdlePipeline();
+  pipeline[0] = {
+    ...pipeline[0],
+    status,
+    detail: status === "failed" ? "Upload failed" : `${Math.max(0, Math.min(100, percent))}% uploaded to local server`,
+    progress: Math.max(0, Math.min(1, percent / 100))
+  };
+  return pipeline;
+}
+
+function makeUploadJob(percent) {
+  return {
+    status: "uploading",
+    progress: Math.max(1, Math.min(4, Math.round(percent / 25))),
+    message: `Uploading video (${percent}%)`,
+    pipeline: makeUploadPipeline(percent)
+  };
+}
+
+function formatStepMeta(step) {
+  if (step.status === "complete") return step.elapsedMs ? formatDuration(step.elapsedMs) : "Done";
+  if (step.status === "active") return Number.isFinite(step.progress) ? `${Math.round(step.progress * 100)}%` : "Running";
+  if (step.status === "failed") return "Failed";
+  return "Waiting";
+}
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms)) return "";
+  if (ms < 1000) return `${Math.max(1, Math.round(ms))}ms`;
+  return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
 }
 
 function Stat({ label, value }) {

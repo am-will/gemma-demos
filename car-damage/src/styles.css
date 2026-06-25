@@ -413,6 +413,94 @@ input:focus {
   transition: width 320ms var(--bounce);
 }
 
+.processDashboard {
+  display: grid;
+  gap: 10px;
+}
+
+.processStep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 2px solid var(--line-soft);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.processStep.active {
+  border-color: var(--ink);
+  background: #fff8e6;
+  box-shadow: 3px 3px 0 0 var(--line-soft);
+}
+
+.processStep.complete {
+  border-color: #86efac;
+  background: #ecfdf5;
+}
+
+.processStep.failed {
+  border-color: var(--bad);
+  background: #fff1f3;
+}
+
+.processDot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 9999px;
+  background: #cbd5e1;
+}
+
+.processStep.active .processDot {
+  background: var(--amber);
+  animation: pulseDot 900ms ease-in-out infinite alternate;
+}
+
+.processStep.complete .processDot {
+  background: var(--mint);
+}
+
+.processStep.failed .processDot {
+  background: var(--bad);
+}
+
+.processCopy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.processCopy strong {
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.processCopy span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.processStep small {
+  color: var(--ink);
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@keyframes pulseDot {
+  from { transform: scale(0.82); }
+  to { transform: scale(1.1); }
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -879,6 +967,12 @@ h3 {
   .summaryGrid { grid-template-columns: repeat(3, 1fr); }
   .stat { min-height: 80px; }
   .stat strong { font-size: 18px; }
+  .processStep {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .processStep small {
+    grid-column: 2;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -886,8 +980,10 @@ h3 {
   .card,
   .primary,
   .drop,
-  .downloads a {
+  .downloads a,
+  .processStep.active .processDot {
     transition: none !important;
+    animation: none !important;
   }
   .card:hover { transform: none; }
 }

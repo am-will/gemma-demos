@@ -21,6 +21,8 @@ const outputsDir = path.join(rootDir, "outputs", "jobs");
 const distDir = path.join(rootDir, "dist");
 const model = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
 const port = Number(process.env.PORT || 8787);
+const extractionMaxWidth = Number(process.env.FRAME_EXTRACTION_MAX_WIDTH || 1280);
+const extractionJpegQuality = Number(process.env.FRAME_EXTRACTION_JPEG_QUALITY || 5);
 
 await Promise.all([mkdir(uploadsDir, { recursive: true }), mkdir(tmpDir, { recursive: true }), mkdir(outputsDir, { recursive: true })]);
 
@@ -62,7 +64,8 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
     progress: 0,
     message: "Queued video inspection",
     createdAt: new Date().toISOString(),
-    settings: { sampleFps, maxFrames, confidenceFloor, frameConcurrency, tileConcurrency, model },
+    settings: { sampleFps, maxFrames, confidenceFloor, frameConcurrency, tileConcurrency, model, extractionMaxWidth, extractionJpegQuality },
+    pipeline: buildPipeline(),
     result: null,
     error: null
   };
@@ -73,6 +76,7 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
     job.status = "failed";
     job.error = error instanceof Error ? error.message : String(error);
     job.message = "Analysis failed";
+    failActivePipelineStep(job, job.error);
   });
 });
 
@@ -106,10 +110,22 @@ async function processVideoJob(job, videoPath, originalName) {
   await Promise.all([mkdir(framesDir, { recursive: true }), mkdir(jobOut, { recursive: true })]);
 
   job.status = "processing";
+  job.pipeline = buildPipeline();
+  setPipelineStep(job, "upload", "complete", `Received ${originalName}`, { progress: 1 });
+  setPipelineStep(job, "extract", "active", "Starting ffmpeg frame extraction", { progress: 0 });
   job.message = "Extracting representative frames";
-  job.progress = 8;
+  job.progress = 5;
 
-  const extraction = await extractFrames(videoPath, framesDir, job.settings.sampleFps, job.settings.maxFrames);
+  const extractionStartedAt = Date.now();
+  const extraction = await extractFrames(videoPath, framesDir, job.settings.sampleFps, job.settings.maxFrames, (event) => {
+    const progress = Math.max(0, Math.min(1, event.progress || 0));
+    setPipelineStep(job, "extract", "active", event.detail || "Extracting frames", {
+      progress,
+      elapsedMs: Date.now() - extractionStartedAt
+    });
+    job.progress = Math.round(5 + progress * 13);
+    job.message = event.detail || "Extracting representative frames";
+  });
   let frameFiles = (await readdir(framesDir))
     .filter((name) => name.endsWith(".jpg"))
     .sort()
@@ -119,6 +135,12 @@ async function processVideoJob(job, videoPath, originalName) {
     throw new Error("ffmpeg did not extract any frames from the video.");
   }
 
+  setPipelineStep(job, "extract", "complete", `Extracted ${frameFiles.length} frame${frameFiles.length === 1 ? "" : "s"} at ${extraction.effectiveSampleFps} FPS`, {
+    progress: 1,
+    elapsedMs: Date.now() - extractionStartedAt
+  });
+  const inspectionStartedAt = Date.now();
+  setPipelineStep(job, "inspect", "active", `0 of ${frameFiles.length} frames inspected`, { progress: 0 });
   job.message = `Gemma is inspecting ${frameFiles.length} sampled frames with ${job.settings.frameConcurrency} parallel workers`;
   const frameFindings = await mapWithConcurrency(
     frameFiles,
@@ -130,15 +152,32 @@ async function processVideoJob(job, videoPath, originalName) {
       return { frameNumber, filename, framePath, findings };
     },
     (completed, total) => {
-      job.progress = Math.round(12 + (completed / total) * 68);
+      const progress = completed / total;
+      setPipelineStep(job, "inspect", "active", `${completed} of ${total} frames inspected`, {
+        progress,
+        elapsedMs: Date.now() - inspectionStartedAt
+      });
+      job.progress = Math.round(18 + progress * 62);
       job.message = `Inspected ${completed} of ${total} sampled frames`;
     }
   );
+  setPipelineStep(job, "inspect", "complete", `Inspected ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`, {
+    progress: 1,
+    elapsedMs: Date.now() - inspectionStartedAt
+  });
 
+  const dedupeStartedAt = Date.now();
+  setPipelineStep(job, "dedupe", "active", "Merging repeated sightings", { progress: 0 });
   job.message = "Deduplicating visible damage";
   job.progress = 84;
   const detections = dedupeFindings(frameFindings, job.settings.confidenceFloor);
+  setPipelineStep(job, "dedupe", "complete", `${detections.length} unique damage candidate${detections.length === 1 ? "" : "s"}`, {
+    progress: 1,
+    elapsedMs: Date.now() - dedupeStartedAt
+  });
 
+  const annotationStartedAt = Date.now();
+  setPipelineStep(job, "annotate", "active", "Drawing evidence boxes", { progress: 0 });
   job.message = "Drawing annotated evidence frames";
   const annotated = [];
   for (let i = 0; i < detections.length; i += 1) {
@@ -156,8 +195,18 @@ async function processVideoJob(job, videoPath, originalName) {
       imageFilename: outputName,
       imageUrl: `/outputs/jobs/${job.id}/${outputName}`
     });
+    setPipelineStep(job, "annotate", "active", `${annotated.length} of ${detections.length} evidence images drawn`, {
+      progress: detections.length ? annotated.length / detections.length : 1,
+      elapsedMs: Date.now() - annotationStartedAt
+    });
   }
+  setPipelineStep(job, "annotate", "complete", `${annotated.length} evidence image${annotated.length === 1 ? "" : "s"} ready`, {
+    progress: 1,
+    elapsedMs: Date.now() - annotationStartedAt
+  });
 
+  const reportStartedAt = Date.now();
+  setPipelineStep(job, "report", "active", "Writing report artifacts", { progress: 0 });
   const report = buildDamageReport({
     jobId: job.id,
     originalName,
@@ -169,6 +218,10 @@ async function processVideoJob(job, videoPath, originalName) {
   });
   await writeFile(path.join(jobOut, "damage-report.json"), JSON.stringify(report, null, 2));
   await writeFile(path.join(jobOut, "damage-report.md"), renderDamageReportMarkdown(report));
+  setPipelineStep(job, "report", "complete", "Report JSON and Markdown written", {
+    progress: 1,
+    elapsedMs: Date.now() - reportStartedAt
+  });
 
   const manifest = {
     jobId: job.id,
@@ -286,45 +339,120 @@ function renderDamageReportMarkdown(report) {
   return `${lines.join("\n")}\n`;
 }
 
-async function extractFrames(videoPath, framesDir, sampleFps, maxFrames) {
+function buildPipeline() {
+  return [
+    { key: "upload", label: "Upload", status: "pending", detail: "Waiting for video", progress: 0 },
+    { key: "extract", label: "Extract frames", status: "pending", detail: "Waiting for upload", progress: 0 },
+    { key: "inspect", label: "Model inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
+    { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
+    { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
+    { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }
+  ];
+}
+
+function setPipelineStep(job, key, status, detail, extra = {}) {
+  const pipeline = Array.isArray(job.pipeline) ? job.pipeline : buildPipeline();
+  const index = pipeline.findIndex((step) => step.key === key);
+  if (index === -1) return;
+  const now = new Date().toISOString();
+  const existing = pipeline[index];
+  pipeline[index] = {
+    ...existing,
+    ...extra,
+    status,
+    detail,
+    startedAt: existing.startedAt || (status === "active" ? now : undefined),
+    completedAt: status === "complete" ? now : existing.completedAt
+  };
+  job.pipeline = pipeline;
+}
+
+function failActivePipelineStep(job, error) {
+  const pipeline = Array.isArray(job.pipeline) ? job.pipeline : buildPipeline();
+  const active = pipeline.find((step) => step.status === "active") || pipeline.find((step) => step.status === "pending");
+  if (active) {
+    setPipelineStep(job, active.key, "failed", cleanText(error || "Step failed"));
+  }
+}
+
+async function extractFrames(videoPath, framesDir, sampleFps, maxFrames, onProgress) {
   const duration = await probeDuration(videoPath);
   const effectiveFps = duration > 0 ? Math.min(sampleFps, maxFrames / duration) : sampleFps;
   const frameIntervalSeconds = effectiveFps > 0 ? 1 / effectiveFps : 1 / sampleFps;
   await runFfmpeg([
+    "-nostdin",
     "-hide_banner",
     "-loglevel",
     "error",
+    "-threads",
+    "0",
     "-i",
     videoPath,
     "-vf",
-    `fps=${effectiveFps.toFixed(6)},scale='min(1920,iw)':-2`,
+    `fps=${effectiveFps.toFixed(6)},scale='min(${extractionMaxWidth},iw)':-2:flags=fast_bilinear`,
+    "-frames:v",
+    String(maxFrames),
     "-q:v",
-    "2",
+    String(extractionJpegQuality),
     "-pix_fmt",
     "yuvj420p",
     "-strict",
     "unofficial",
+    "-progress",
+    "pipe:1",
+    "-nostats",
     path.join(framesDir, "frame-%05d.jpg")
-  ]);
+  ], { duration, maxFrames, onProgress });
   return {
     durationSeconds: duration ? Number(duration.toFixed(2)) : null,
     requestedSampleFps: sampleFps,
     effectiveSampleFps: Number(effectiveFps.toFixed(3)),
     frameIntervalSeconds: Number(frameIntervalSeconds.toFixed(2)),
-    maxFrames
+    maxFrames,
+    extractionMaxWidth,
+    extractionJpegQuality
   };
 }
 
-function runFfmpeg(args) {
+function runFfmpeg(args, { duration, maxFrames, onProgress } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn("ffmpeg", args);
     let stderr = "";
+    let stdoutBuffer = "";
+    let lastFrame = 0;
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString();
     });
+    child.stdout.on("data", (chunk) => {
+      stdoutBuffer += chunk.toString();
+      const lines = stdoutBuffer.split(/\r?\n/);
+      stdoutBuffer = lines.pop() || "";
+      for (const line of lines) {
+        const [key, value] = line.split("=");
+        if (key === "frame") {
+          const frame = Number(value);
+          if (Number.isFinite(frame)) lastFrame = Math.max(lastFrame, frame);
+        }
+        if (key === "progress" || key === "frame" || key === "out_time_ms" || key === "out_time_us") {
+          const frameProgress = maxFrames ? lastFrame / maxFrames : 0;
+          const progress = Math.max(0, Math.min(0.98, frameProgress));
+          onProgress?.({
+            progress,
+            detail: lastFrame
+              ? `Extracted ${Math.min(lastFrame, maxFrames || lastFrame)} of ${maxFrames || "?"} target frames`
+              : duration
+                ? `Scanning ${Number(duration).toFixed(1)} seconds of video`
+                : "Scanning video frames"
+          });
+        }
+      }
+    });
     child.on("error", reject);
     child.on("close", (code) => {
-      if (code === 0) resolve();
+      if (code === 0) {
+        onProgress?.({ progress: 1, detail: `Extracted ${maxFrames || lastFrame || "target"} frames` });
+        resolve();
+      }
       else reject(new Error(`ffmpeg failed with code ${code}: ${stderr}`));
     });
   });
