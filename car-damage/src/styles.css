@@ -268,8 +268,13 @@ h1 .pop::after {
 }
 
 .drop.hasPreview .dropOverlay {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.72));
+  background: transparent;
   color: #fff;
+}
+
+.drop.hasPreview .dropOverlay strong,
+.drop.hasPreview .dropOverlay > span {
+  text-shadow: 0 2px 10px rgba(15, 23, 42, 0.75);
 }
 
 .dropIcon {
