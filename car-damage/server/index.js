@@ -22,7 +22,7 @@ const distDir = path.join(rootDir, "dist");
 const model = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
 const port = Number(process.env.PORT || 8787);
 const extractionMaxWidth = Number(process.env.FRAME_EXTRACTION_MAX_WIDTH || 1920);
-const extractionJpegQuality = Number(process.env.FRAME_EXTRACTION_JPEG_QUALITY || 2);
+const extractionJpegQuality = Number(process.env.FRAME_EXTRACTION_JPEG_QUALITY || 92);
 const ffmpegHwaccel = process.env.FFMPEG_HWACCEL || (process.platform === "darwin" ? "videotoolbox" : "auto");
 const extractionMode = process.env.FRAME_EXTRACTION_MODE || "sparse-sharp";
 const extractionSeekWorkers = clampInteger(process.env.FRAME_EXTRACTION_SEEK_WORKERS, 1, 8, 4);
@@ -462,7 +462,7 @@ async function extractSharpFrameAtTimestamp(videoPath, outputPath, targetTimesta
 
   for (const [offsetIndex, offset] of offsets.entries()) {
     const timestamp = clampTimestamp(targetTimestamp + offset, duration);
-    const candidatePath = `${outputPath}.candidate-${offsetIndex}.jpg`;
+    const candidatePath = `${outputPath}.candidate-${offsetIndex}.png`;
     const usedFallback = await extractSingleSeekFrame(videoPath, candidatePath, timestamp);
     hardwareFallbacks += usedFallback ? 1 : 0;
     const sharpness = await scoreImageSharpness(candidatePath);
@@ -500,10 +500,6 @@ async function extractSingleSeekFrame(videoPath, outputPath, timestamp) {
     "1",
     "-vf",
     `scale='min(${extractionMaxWidth},iw)':-2:flags=fast_bilinear`,
-    "-q:v",
-    String(extractionJpegQuality),
-    "-pix_fmt",
-    "yuvj420p",
     "-y",
     outputPath
   ];
@@ -533,12 +529,6 @@ async function extractFramesSinglePass(videoPath, framesDir, { duration, effecti
     `fps=${effectiveFps.toFixed(6)},scale='min(${extractionMaxWidth},iw)':-2:flags=fast_bilinear`,
     "-frames:v",
     String(maxFrames),
-    "-q:v",
-    String(extractionJpegQuality),
-    "-pix_fmt",
-    "yuvj420p",
-    "-strict",
-    "unofficial",
     "-progress",
     "pipe:1",
     "-nostats",
