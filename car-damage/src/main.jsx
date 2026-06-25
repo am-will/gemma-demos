@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, CheckCircle2, Clipboard, Copy, Film, Gauge, Search, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clipboard, Copy, Film, FolderOpen, Gauge, Search, UploadCloud } from "lucide-react";
 import "./styles.css";
 
 const api = "";
@@ -188,12 +188,14 @@ function App() {
           </div>
           <div className="meter"><div style={{ width: `${job?.progress || 0}%` }} /></div>
           <div className="processDashboard">
-            {(job?.pipeline || makeIdlePipeline()).map((step) => (
+            {(job?.pipeline || makeIdlePipeline()).filter((step) => step.key !== "upload").map((step) => (
               <div className={`processStep ${step.status}`} key={step.key}>
                 <span className="processDot" aria-hidden="true" />
                 <div className="processCopy">
                   <strong>{step.label}</strong>
-                  <span>{step.detail}</span>
+                  <span className="stepProgress" aria-label={`${step.label} ${formatStepMeta(step)}`}>
+                    <span style={{ width: `${Math.round((step.progress || 0) * 100)}%` }} />
+                  </span>
                 </div>
                 <small>{formatStepMeta(step)}</small>
               </div>
@@ -302,6 +304,14 @@ function App() {
             </article>
           ))}
         </div>
+        {complete ? (
+          <div className="resultActions">
+            <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
+              <FolderOpen size={16} />
+              Output folder
+            </a>
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -362,7 +372,6 @@ function uploadAnalysis(form, onUploadProgress) {
 
 function makeIdlePipeline() {
   return [
-    { key: "upload", label: "Upload", status: "pending", detail: "Choose a video", progress: 0 },
     { key: "extract", label: "Extract frames", status: "pending", detail: "Waiting for upload", progress: 0 },
     { key: "inspect", label: "Model inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
     { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
@@ -373,12 +382,6 @@ function makeIdlePipeline() {
 
 function makeUploadPipeline(percent, status = "active") {
   const pipeline = makeIdlePipeline();
-  pipeline[0] = {
-    ...pipeline[0],
-    status,
-    detail: status === "failed" ? "Upload failed" : `${Math.max(0, Math.min(100, percent))}% uploaded to local server`,
-    progress: Math.max(0, Math.min(1, percent / 100))
-  };
   return pipeline;
 }
 

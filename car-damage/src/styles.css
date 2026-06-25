@@ -196,6 +196,7 @@ h1 .pop::after {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
   gap: 24px;
+  align-items: start;
   margin: 34px 0;
 }
 
@@ -415,18 +416,18 @@ input:focus {
 
 .processDashboard {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .processStep {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  min-height: 58px;
-  padding: 10px 12px;
+  min-height: 46px;
+  padding: 8px 10px;
   border: 2px solid var(--line-soft);
-  border-radius: 14px;
+  border-radius: 12px;
   background: #f8fafc;
 }
 
@@ -447,8 +448,8 @@ input:focus {
 }
 
 .processDot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border: 2px solid var(--ink);
   border-radius: 9999px;
   background: #cbd5e1;
@@ -469,23 +470,42 @@ input:focus {
 
 .processCopy {
   display: grid;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 }
 
 .processCopy strong {
   font-family: "Outfit", system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.processCopy span {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+.stepProgress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #e2e8f0;
+}
+
+.stepProgress span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--accent);
+  transition: width 240ms var(--bounce);
+}
+
+.processStep.complete .stepProgress span {
+  background: var(--good);
+}
+
+.processStep.failed .stepProgress span {
+  background: var(--bad);
 }
 
 .processStep small {
@@ -561,6 +581,35 @@ input:focus {
   background: var(--amber);
   transform: translate(-2px, -2px);
   box-shadow: 3px 3px 0 0 var(--ink);
+}
+
+.resultActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
+.resultActions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 9999px;
+  padding: 10px 16px;
+  text-decoration: none;
+  background: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: var(--shadow);
+  transition: all 160ms var(--bounce);
+}
+
+.resultActions a:hover {
+  background: var(--amber);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--ink);
 }
 
 .error {
