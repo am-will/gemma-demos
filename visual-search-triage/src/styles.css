@@ -376,6 +376,8 @@ h1 {
   margin: 0 -1rem -1.35rem;
   padding: 1rem 1rem 1.55rem;
   background: #ffffff;
+  border-top-left-radius: 1.55rem;
+  border-top-right-radius: 1.55rem;
   border-bottom-left-radius: 1.55rem;
   border-bottom-right-radius: 1.55rem;
 }
