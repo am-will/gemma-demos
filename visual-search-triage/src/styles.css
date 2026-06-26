@@ -63,21 +63,21 @@ input {
   display: inline-flex;
   justify-self: start;
   align-items: center;
-  gap: 0.65rem;
-  min-height: 3.53rem;
-  padding: 0.46rem 1.44rem;
+  gap: 0.78rem;
+  min-height: 4.24rem;
+  padding: 0.55rem 1.73rem;
   color: var(--ink);
   background: #ffffff;
   border: 2px solid var(--ink);
   border-radius: 999px;
   font-family: "Manrope", sans-serif;
-  font-size: clamp(1.44rem, 2.74vw, 1.85rem);
+  font-size: clamp(1.73rem, 3.29vw, 2.22rem);
   font-weight: 600;
 }
 
 .demo-badge img {
-  width: 1.73rem;
-  height: 1.73rem;
+  width: 2.08rem;
+  height: 2.08rem;
   object-fit: contain;
 }
 
@@ -293,7 +293,7 @@ h1 {
 }
 
 .completion-time {
-  min-width: 5.35rem;
+  min-width: 7.5rem;
   padding: 0.28rem 0.75rem;
   color: #ffffff;
   background: var(--gpu);
@@ -469,24 +469,13 @@ h1 {
   min-width: 0;
 }
 
-.match-strip-shell::after {
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 4.25rem;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), #ffffff 86%);
-}
-
 .match-strip {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 4.85rem;
   gap: 0.38rem;
   overflow-x: auto;
-  padding: 0 4.25rem 0.25rem 0;
+  padding: 0 0 0.25rem;
   overscroll-behavior-inline: contain;
 }
 

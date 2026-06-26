@@ -241,14 +241,14 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
       <div className="agent-top">
         <header>
           <h2>{config.name}</h2>
-          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00" : formatTimer(elapsedMs)}</div>
+          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
         </header>
 
         <TraceWindow events={events} />
       </div>
 
       <div className="results-box">
-        <h3>All matches</h3>
+        <h3>{matches.length} Matches</h3>
         {result?.error ? <div className="panel-error">{result.error}</div> : null}
         {!result?.error && !matches.length ? <p className="empty-state">No matches returned yet.</p> : null}
         {matches.length ? (
@@ -301,9 +301,10 @@ function fileExtension(filename) {
 
 function formatTimer(ms) {
   const safeMs = Math.max(0, Math.round(ms));
-  const seconds = Math.floor(safeMs / 1000);
-  const milliseconds = String(safeMs % 1000).padStart(3, "0").slice(1);
-  return `${String(seconds).padStart(2, "0")}:${milliseconds}`;
+  const minutes = Math.floor(safeMs / 60000);
+  const seconds = Math.floor((safeMs % 60000) / 1000);
+  const milliseconds = safeMs % 1000;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
 }
 
 function TraceWindow({ events, compact = false }) {
