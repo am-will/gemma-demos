@@ -373,13 +373,32 @@ h1 {
 }
 
 .agent-card.cerebras .results-box {
+  position: relative;
   margin: 0 -1rem -1.35rem;
-  padding: 1rem 1rem 1.55rem;
+  padding: 1.45rem 1rem 1.55rem;
   background: #ffffff;
-  border-top-left-radius: 1.55rem;
-  border-top-right-radius: 1.55rem;
   border-bottom-left-radius: 1.55rem;
   border-bottom-right-radius: 1.55rem;
+}
+
+.agent-card.cerebras .results-box::before,
+.agent-card.cerebras .results-box::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  background: var(--cerebras);
+}
+
+.agent-card.cerebras .results-box::before {
+  left: 0;
+  border-bottom-right-radius: 1.35rem;
+}
+
+.agent-card.cerebras .results-box::after {
+  right: 0;
+  border-bottom-left-radius: 1.35rem;
 }
 
 .results-box h3 {
