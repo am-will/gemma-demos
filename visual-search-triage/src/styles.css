@@ -240,12 +240,12 @@ h1 {
 }
 
 .agent-card {
+  --agent-trace-height: clamp(18rem, 30vw, 30rem);
+
   display: grid;
-  grid-template-rows: auto minmax(18rem, 1fr) auto;
-  gap: 1rem;
+  grid-template-rows: auto auto;
   min-width: 0;
   min-height: 26.8rem;
-  padding: 1rem 1rem 1.35rem;
   background: var(--panel);
   border: 2px solid var(--gpu);
   border-radius: 1.8rem;
@@ -253,12 +253,24 @@ h1 {
 }
 
 .agent-card.cerebras {
-  background: var(--cerebras);
   border-color: var(--cerebras);
 }
 
 .agent-card.gpu {
   border-color: var(--gpu);
+}
+
+.agent-top {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.agent-card.cerebras .agent-top {
+  background: var(--cerebras);
+  border-bottom-left-radius: 1.55rem;
+  border-bottom-right-radius: 1.55rem;
 }
 
 .agent-card header {
@@ -305,8 +317,7 @@ h1 {
 }
 
 .trace-window {
-  height: min(30vw, 30rem);
-  min-height: 18rem;
+  height: var(--agent-trace-height);
   overflow: auto;
   padding: clamp(0.8rem, 1.25vw, 1.35rem);
   color: var(--terminal-text);
@@ -370,35 +381,11 @@ h1 {
   display: grid;
   gap: 0.7rem;
   min-width: 0;
+  padding: 1rem 1rem 1.35rem;
 }
 
 .agent-card.cerebras .results-box {
-  position: relative;
-  margin: 0 -1rem -1.35rem;
-  padding: 1.45rem 1rem 1.55rem;
-  background: #ffffff;
-  border-bottom-left-radius: 1.55rem;
-  border-bottom-right-radius: 1.55rem;
-}
-
-.agent-card.cerebras .results-box::before,
-.agent-card.cerebras .results-box::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  width: 1.35rem;
-  height: 1.35rem;
-  background: var(--cerebras);
-}
-
-.agent-card.cerebras .results-box::before {
-  left: 0;
-  border-bottom-right-radius: 1.35rem;
-}
-
-.agent-card.cerebras .results-box::after {
-  right: 0;
-  border-bottom-left-radius: 1.35rem;
+  padding: 1.2rem 1rem 1.55rem;
 }
 
 .results-box h3 {

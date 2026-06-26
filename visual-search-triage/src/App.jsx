@@ -238,12 +238,14 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
 
   return (
     <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""}`}>
-      <header>
-        <h2>{config.name}</h2>
-        <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00" : formatTimer(elapsedMs)}</div>
-      </header>
+      <div className="agent-top">
+        <header>
+          <h2>{config.name}</h2>
+          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00" : formatTimer(elapsedMs)}</div>
+        </header>
 
-      <TraceWindow events={events} />
+        <TraceWindow events={events} />
+      </div>
 
       <div className="results-box">
         <h3>All matches</h3>
