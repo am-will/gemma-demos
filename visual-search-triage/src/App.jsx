@@ -198,7 +198,7 @@ function App() {
           />
         ))}
       </section>
-      <footer className="brand-footer"><img src="/assets/cerebras-logo.png" alt="" /><span>cerebras</span></footer>
+      <footer className="brand-footer"><img src="/assets/cerebras-wordmark.png" alt="Cerebras" /></footer>
     </main>
   );
 }
