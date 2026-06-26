@@ -48,8 +48,7 @@ input {
   grid-template-columns: minmax(0, 1fr) minmax(30rem, 47rem);
   gap: clamp(2rem, 5vw, 5rem);
   align-items: start;
-  min-height: clamp(20rem, 27vw, 25rem);
-  padding-bottom: 2.8rem;
+  padding-bottom: 2.25rem;
   border-bottom: 1px solid rgba(42, 42, 42, 0.22);
 }
 
@@ -62,6 +61,7 @@ input {
 
 .demo-badge {
   display: inline-flex;
+  justify-self: start;
   align-items: center;
   gap: 0.45rem;
   min-height: 2.45rem;
@@ -98,7 +98,7 @@ h1 {
 }
 
 .hero-copy p {
-  margin-top: clamp(1rem, 2.1vw, 2.05rem);
+  margin-top: clamp(0.8rem, 1.25vw, 1.2rem);
   font-family: "Manrope", sans-serif;
   font-size: clamp(1.2rem, 1.9vw, 2.25rem);
   line-height: 1.05;
