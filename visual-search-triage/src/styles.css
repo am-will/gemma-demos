@@ -349,7 +349,7 @@ h1 {
 }
 
 .trace-time {
-  color: #bdbdbd;
+  color: #9ad0ff;
   white-space: nowrap;
 }
 
@@ -364,12 +364,71 @@ h1 {
   white-space: nowrap;
 }
 
+.trace-line.boot .trace-phase,
+.trace-line.start .trace-phase,
+.trace-line.prep .trace-phase,
+.trace-line.batch .trace-phase,
+.trace-line.metric .trace-phase {
+  background: #ffd15c;
+  color: #161616;
+}
+
+.trace-line.command .trace-phase {
+  background: #d8c4ff;
+  color: #161616;
+}
+
+.trace-line.dispatch .trace-phase,
+.trace-line.partial_result .trace-phase {
+  background: #ffcf33;
+  color: #161616;
+}
+
+.trace-line.response .trace-phase,
+.trace-line.provider_done .trace-phase,
+.trace-line.run_done .trace-phase {
+  background: #55e6a5;
+  color: #062113;
+}
+
+.trace-line.error .trace-phase {
+  background: #ff5d5d;
+  color: #ffffff;
+}
+
 .trace-line pre {
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   line-height: 1.35;
+}
+
+.trace-line.boot pre,
+.trace-line.start pre,
+.trace-line.prep pre,
+.trace-line.batch pre,
+.trace-line.metric pre {
+  color: #dfffe8;
+}
+
+.trace-line.command pre {
+  color: #f8f2ff;
+}
+
+.trace-line.dispatch pre,
+.trace-line.partial_result pre {
+  color: #fff4b8;
+}
+
+.trace-line.response pre,
+.trace-line.provider_done pre,
+.trace-line.run_done pre {
+  color: #bfffdc;
+}
+
+.trace-line.error pre {
+  color: #ffd1d1;
 }
 
 .trace-placeholder {
