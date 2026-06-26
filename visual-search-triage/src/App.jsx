@@ -1,35 +1,31 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  ArrowRight,
-  Bot,
   CircleAlert,
-  Clock3,
   FolderOpen,
   Image as ImageIcon,
-  RefreshCw,
 } from "lucide-react";
 import "./styles.css";
 
 const PROVIDERS = {
-  gemini: { name: "Gemini Responses API", accent: "violet", logo: "/assets/gemini-logo.png" },
-  openrouter: { name: "OpenRouter API", accent: "violet", logo: "/assets/gemini-logo.png" },
-  cerebras: { name: "Cerebras API", accent: "pink", logo: "/assets/cerebras-logo.png" }
+  gemini: { name: "GPUs", accent: "gpu" },
+  openrouter: { name: "GPUs", accent: "gpu" },
+  cerebras: { name: "Cerebras", accent: "cerebras" }
 };
-const PANEL_PROVIDERS = ["gemini", "cerebras"];
+const PANEL_PROVIDERS = ["cerebras", "gemini"];
 
 function App() {
   const [health, setHealth] = useState(null);
   const selectedFilesRef = useRef([]);
   const previewUrlsRef = useRef([]);
   const [fileSummary, setFileSummary] = useState({ count: 0, folderName: "", previews: [] });
-  const [description, setDescription] = useState("red car with visible body damage");
+  const [description, setDescription] = useState("Food");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
   const [results, setResults] = useState({ gemini: null, cerebras: null });
   const [winnerProvider, setWinnerProvider] = useState(null);
-  const [leftProvider, setLeftProvider] = useState("gemini");
+  const leftProvider = "openrouter";
   const [runStartedAt, setRunStartedAt] = useState(null);
   const [now, setNow] = useState(Date.now());
 
@@ -138,62 +134,51 @@ function App() {
 
   const imageCount = fileSummary.count;
   const folderName = fileSummary.folderName || "Selected images";
-  const previews = fileSummary.previews;
   const canStart = imageCount > 0 && description.trim() && !running;
 
   return (
     <main className="page-shell">
-      <Decorations />
       <section className="hero">
         <div className="hero-copy">
-          <div className="eyebrow"><Bot size={18} /> Side-by-Side Multimodal Demo</div>
+          <div className="demo-badge"><img src="/assets/gemini-logo.png" alt="" /> Gemma 4 Demo</div>
           <h1>Image Search</h1>
-          <p>Find and match images according to your description, then compare how each API searches the same folder in real time.</p>
+          <p><strong>Find &amp; match images</strong> according to a description</p>
         </div>
         <div className="control-card">
-          <label className="field-label" htmlFor="folder-input">Image folder</label>
-          <label className="folder-drop" htmlFor="folder-input">
-            <FolderOpen size={30} />
-            <span>{imageCount ? folderName : "Choose a folder full of images"}</span>
-            <strong>{imageCount ? `${imageCount} images ready` : "Folder picker"}</strong>
-          </label>
-          <input
-            id="folder-input"
-            className="hidden-input"
-            type="file"
-            accept="image/*"
-            multiple
-            webkitdirectory=""
-            onChange={handleFolderChange}
-          />
+          <div className="picker-field">
+            <label className="field-label" htmlFor="folder-input">IMAGE FOLDER</label>
+            <label className="folder-drop" htmlFor="folder-input">
+              <FolderOpen size={30} />
+              <span>{imageCount ? folderName : "coco"}</span>
+              <strong>{imageCount ? `${imageCount} images ready` : "30 images ready"}</strong>
+            </label>
+            <input
+              id="folder-input"
+              className="hidden-input"
+              type="file"
+              accept="image/*"
+              multiple
+              webkitdirectory=""
+              onChange={handleFolderChange}
+            />
+          </div>
 
-          <label className="field-label" htmlFor="description">Find images matching</label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Example: warehouse shelves with empty red bins"
-          />
+          <div className="query-field">
+            <label className="field-label" htmlFor="description">FIND IMAGES OF</label>
+            <input
+              id="description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Food"
+            />
+          </div>
 
           <button className="primary-button" disabled={!canStart} onClick={startRun}>
-            Start image search <span><ArrowRight size={18} /></span>
+            Start image search
           </button>
           {error ? <div className="error-pill"><CircleAlert size={16} /> {error}</div> : null}
         </div>
       </section>
-
-      {previews.length ? (
-        <div className="image-strip-shell">
-          <section className="image-strip" aria-label="Selected image previews" onWheel={handlePreviewWheel}>
-            {previews.map((preview) => (
-              <figure key={preview.url}>
-                <img src={preview.url} alt="" />
-                <figcaption>{preview.name}</figcaption>
-              </figure>
-            ))}
-          </section>
-        </div>
-      ) : null}
 
       <section className="agents-grid">
         {PANEL_PROVIDERS.map((provider) => (
@@ -201,12 +186,11 @@ function App() {
             key={provider}
             provider={provider}
             activeProvider={provider === "gemini" ? leftProvider : provider}
-            leftProvider={leftProvider}
-            onToggleLeftProvider={() => setLeftProvider((current) => current === "gemini" ? "openrouter" : "gemini")}
             health={health?.providers?.[provider === "gemini" ? leftProvider : provider]}
             events={events.filter((event) => (event.panelProvider || event.provider) === provider)}
             result={results[provider]}
             referenceMatches={provider === "cerebras" ? [] : results.cerebras?.matches || []}
+            onMatchWheel={handlePreviewWheel}
             running={running}
             winnerProvider={winnerProvider}
             runStartedAt={runStartedAt}
@@ -214,7 +198,7 @@ function App() {
           />
         ))}
       </section>
-
+      <footer className="brand-footer"><img src="/assets/cerebras-logo.png" alt="" /><span>cerebras</span></footer>
     </main>
   );
 }
@@ -243,7 +227,7 @@ function isSuccessfulCompletion(payload) {
   return payload.batches.some((batch) => !batch.error);
 }
 
-function AgentPanel({ provider, activeProvider, leftProvider, onToggleLeftProvider, health, events, result, referenceMatches, running, winnerProvider, runStartedAt, now }) {
+function AgentPanel({ provider, activeProvider, health, events, result, referenceMatches, onMatchWheel, running, winnerProvider, runStartedAt, now }) {
   const config = PROVIDERS[activeProvider];
   const matches = sortMatchesForDisplay(result?.matches || [], referenceMatches);
   const status = result?.status || (running ? "running" : "idle");
@@ -251,32 +235,13 @@ function AgentPanel({ provider, activeProvider, leftProvider, onToggleLeftProvid
   const isWinner = winnerProvider === provider;
   const isLoser = Boolean(winnerProvider && finished && !isWinner);
   const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
-  const canSwitch = provider === "gemini" && !running;
 
   return (
     <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""}`}>
       <header>
-        <div className="agent-logo"><img src={config.logo} alt="" /></div>
-        <div className="agent-title-block">
-          <div className="agent-title-row">
-            <div className="provider-copy" key={activeProvider}>
-              <h2>{config.name}</h2>
-              <p>{health?.model || "model not loaded"}</p>
-            </div>
-            {provider === "gemini" ? (
-              <button className="provider-switch" type="button" onClick={onToggleLeftProvider} disabled={!canSwitch} title={leftProvider === "gemini" ? "Switch to OpenRouter API" : "Switch to Gemini Responses API"}>
-                <RefreshCw size={18} />
-              </button>
-            ) : null}
-          </div>
-        </div>
-        <StatusBadge status={status} />
+        <h2>{config.name}</h2>
+        <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00" : formatTimer(elapsedMs)}</div>
       </header>
-
-      <div className="agent-metrics">
-        <Metric label="Time to Completion" value={elapsedMs === null ? "--" : formatTimer(elapsedMs)} icon={Clock3} variant={isWinner ? "winner-time" : isLoser ? "loser-time" : running ? "running-time" : ""} />
-        <Metric label="Matches" value={String(matches.length)} icon={ImageIcon} />
-      </div>
 
       <TraceWindow events={events} />
 
@@ -284,20 +249,22 @@ function AgentPanel({ provider, activeProvider, leftProvider, onToggleLeftProvid
         <h3>All matches</h3>
         {result?.error ? <div className="panel-error">{result.error}</div> : null}
         {!result?.error && !matches.length ? <p className="empty-state">No matches returned yet.</p> : null}
-        {matches.map((match) => (
-          <div className="match-row" key={`${provider}-${match.filename}`}>
-            {match.imageUrl ? (
-              <img className="match-thumb" src={match.imageUrl} alt="" />
-            ) : (
-              <div className="match-thumb placeholder"><ImageIcon size={24} /></div>
-            )}
-            <div>
-              <strong>{match.filename}</strong>
-              <p>{shortMatchDescription(match)}</p>
+        {matches.length ? (
+          <div className="match-strip-shell">
+            <div className="match-strip" onWheel={onMatchWheel} aria-label={`${config.name} matches`}>
+              {matches.map((match) => (
+                <figure className="match-tile" key={`${provider}-${match.filename}`} title={shortMatchDescription(match)}>
+                  {match.imageUrl ? (
+                    <img src={match.imageUrl} alt="" />
+                  ) : (
+                    <div className="match-thumb placeholder"><ImageIcon size={24} /></div>
+                  )}
+                  <figcaption>{fileExtension(match.filename)}</figcaption>
+                </figure>
+              ))}
             </div>
-            <span>{Math.round((match.confidence || 0) * 100)}%</span>
           </div>
-        ))}
+        ) : null}
       </div>
     </article>
   );
@@ -325,25 +292,16 @@ function shortMatchDescription(match) {
   return `${text.slice(0, limit - 1).trimEnd()}…`;
 }
 
+function fileExtension(filename) {
+  const match = String(filename || "").match(/\.[a-z0-9]+$/i);
+  return match ? match[0] : ".jpg";
+}
+
 function formatTimer(ms) {
   const safeMs = Math.max(0, Math.round(ms));
   const seconds = Math.floor(safeMs / 1000);
   const milliseconds = String(safeMs % 1000).padStart(3, "0").slice(1);
   return `${String(seconds).padStart(2, "0")}:${milliseconds}`;
-}
-
-function Metric({ label, value, icon: Icon, variant = "" }) {
-  return (
-    <div className={`agent-metric ${variant}`}>
-      <Icon size={16} />
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  return <div className={`status-badge ${status}`}>{status}</div>;
 }
 
 function TraceWindow({ events, compact = false }) {
@@ -358,11 +316,21 @@ function TraceWindow({ events, compact = false }) {
         <div className={`trace-line ${event.phase || event.type}`} key={`${event.at}-${index}`}>
           <span className="trace-time">{new Date(event.at).toLocaleTimeString()}</span>
           <span className="trace-phase">{event.phase || event.type}</span>
-          <pre>{event.message || summarizeEvent(event)}</pre>
+          <pre>{formatTraceMessage(event)}</pre>
         </div>
-      )) : <div className="trace-placeholder">$ waiting for agent trace...</div>}
+      )) : <div className="trace-placeholder">Waiting for agent trace...</div>}
     </div>
   );
+}
+
+function formatTraceMessage(event) {
+  const raw = event.message || summarizeEvent(event);
+  if ((event.panelProvider || event.provider) !== "gemini") return raw;
+  return String(raw)
+    .replaceAll("OpenRouter", "GPU")
+    .replaceAll("openrouter", "gpu")
+    .replaceAll("api.openrouter.ai", "gpu.endpoint")
+    .replaceAll("$OPENROUTER_API_KEY", "$GPU_API_KEY");
 }
 
 function summarizeEvent(event) {
@@ -371,15 +339,6 @@ function summarizeEvent(event) {
   if (event.type === "metric") return `${event.images || 0} images, ${event.batches || 0} batches`;
   if (event.type === "error") return event.message;
   return JSON.stringify(event);
-}
-
-function Decorations() {
-  return (
-    <div className="decorations" aria-hidden="true">
-      <span className="shape square" />
-      <span className="shape pill" />
-    </div>
-  );
 }
 
 createRoot(document.getElementById("root")).render(<App />);
