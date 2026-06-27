@@ -471,7 +471,7 @@ function sanitizeTraceText(value) {
 function formatPanelModel(provider, value) {
   const sanitized = sanitizeTraceText(value);
   if (provider === "cerebras" && /^gemma-4-31b(?:-trial)?$/i.test(sanitized)) {
-    return "Gemma 4 31B";
+    return "cerebras/gemma-4-31b";
   }
   return sanitized;
 }

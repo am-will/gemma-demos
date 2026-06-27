@@ -404,6 +404,13 @@ h1 {
   object-fit: contain;
 }
 
+.agent-card.cerebras h2 img {
+  padding: 0.28rem;
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0.18rem 0.5rem rgba(17, 17, 17, 0.18);
+}
+
 .agent-card header span {
   display: block;
   margin-top: 0.25rem;
