@@ -29,6 +29,7 @@ const ffmpegHwaccel = process.env.FFMPEG_HWACCEL || (process.platform === "darwi
 const extractionMode = process.env.FRAME_EXTRACTION_MODE || "sparse-sharp";
 const extractionSeekWorkers = clampInteger(process.env.FRAME_EXTRACTION_SEEK_WORKERS, 1, 8, 4);
 const extractionBlurThreshold = Number(process.env.FRAME_EXTRACTION_BLUR_THRESHOLD || 85);
+const gpuBatchSize = clampInteger(process.env.GPU_BATCH_SIZE, 1, 8, 4);
 
 await Promise.all([mkdir(uploadsDir, { recursive: true }), mkdir(tmpDir, { recursive: true }), mkdir(outputsDir, { recursive: true })]);
 
@@ -349,29 +350,32 @@ async function runDamageProvider({ job, provider, originalName, jobOut, framesDi
     message: `POST ${provider.apiHostLabel} with ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`
   });
 
-  const frameFindings = await mapWithConcurrency(
-    frameFiles,
-    job.settings.frameConcurrency,
-    async (filename, index) => {
-      const framePath = path.join(framesDir, filename);
-      const frameNumber = index + 1;
-      const findings = await inspectFrameWithProvider(provider, framePath, frameNumber, frameFiles.length, job.settings.tileConcurrency);
-      return { frameNumber, filename, framePath, findings };
-    },
-    (completed, total) => {
-      const progress = completed / total;
-      setProviderStep(job, provider.id, "inspect", "active", `${completed} of ${total} frames inspected`, {
-        progress,
-        elapsedMs: Date.now() - providerStartedAt
-      });
-      updateComparisonProgress(job);
-      emitJobEvent(job, "partial_result", {
-        provider: provider.id,
-        completed,
-        total
-      });
-    }
-  );
+  const onInspectionProgress = (completed, total) => {
+    const progress = completed / total;
+    setProviderStep(job, provider.id, "inspect", "active", `${completed} of ${total} frames inspected`, {
+      progress,
+      elapsedMs: Date.now() - providerStartedAt
+    });
+    updateComparisonProgress(job);
+    emitJobEvent(job, "partial_result", {
+      provider: provider.id,
+      completed,
+      total
+    });
+  };
+  const frameFindings = provider.actualProvider === "openrouter"
+    ? await inspectFramesWithGpuBatches(provider, frameFiles, framesDir, onInspectionProgress, (type, payload) => emitJobEvent(job, type, payload))
+    : await mapWithConcurrency(
+      frameFiles,
+      job.settings.frameConcurrency,
+      async (filename, index) => {
+        const framePath = path.join(framesDir, filename);
+        const frameNumber = index + 1;
+        const findings = await inspectFrameWithProvider(provider, framePath, frameNumber, frameFiles.length, job.settings.tileConcurrency);
+        return { frameNumber, filename, framePath, findings };
+      },
+      onInspectionProgress
+    );
 
   setProviderStep(job, provider.id, "inspect", "complete", `Inspected ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`, {
     progress: 1,
@@ -686,11 +690,14 @@ function sanitizePublicModel(value) {
 
 function renderDamageCurl(provider, frameCount) {
   const keyLabel = provider.id === "gpu" ? "$GPU_API_KEY" : `$${provider.keyEnv}`;
+  const imageSummary = provider.id === "gpu"
+    ? `${frameCount} sampled image_url parts in batches of ${gpuBatchSize}`
+    : `${frameCount} sampled image_url parts`;
   return sanitizeTraceText([
     `curl -s ${provider.apiHostLabel} \\`,
     `  -H "Authorization: Bearer ${keyLabel}" \\`,
     `  -H "Content-Type: application/json" \\`,
-    `  -d '{"model":"${provider.publicModel}","messages":[{"role":"user","content":[${frameCount} sampled image_url parts, {"type":"text","text":"damage inspection prompt"}]}]}'`
+    `  -d '{"model":"${provider.publicModel}","messages":[{"role":"user","content":[${imageSummary}, {"type":"text","text":"damage inspection prompt"}]}]}'`
   ].join("\n"));
 }
 
@@ -1031,6 +1038,154 @@ Frame ${frameNumber} of ${totalFrames}.`;
   return tileResults.flat();
 }
 
+async function inspectFramesWithGpuBatches(provider, frameFiles, framesDir, onProgress, emit) {
+  const batches = chunkArray(frameFiles, gpuBatchSize);
+  const frameFindings = [];
+  let completed = 0;
+  emit("trace", {
+    provider: provider.id,
+    phase: "batch",
+    message: `GPU will inspect ${frameFiles.length} frames in ${batches.length} batch${batches.length === 1 ? "" : "es"} of up to ${gpuBatchSize}`
+  });
+
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    const batchFiles = batches[batchIndex];
+    const frames = await Promise.all(batchFiles.map(async (filename) => {
+      const frameNumber = frameFiles.indexOf(filename) + 1;
+      const framePath = path.join(framesDir, filename);
+      const [base64, metadata] = await Promise.all([
+        readFile(framePath, "base64"),
+        sharp(framePath).metadata()
+      ]);
+      return {
+        frameNumber,
+        filename,
+        framePath,
+        base64,
+        imageWidth: metadata.width || 1920,
+        imageHeight: metadata.height || 1080
+      };
+    }));
+
+    emit("trace", {
+      provider: provider.id,
+      phase: "dispatch",
+      message: `POST ${provider.apiHostLabel} batch ${batchIndex + 1}/${batches.length} with ${frames.length} frames`
+    });
+    const batchResults = await inspectFrameBatchWithProvider(provider, frames, batchIndex + 1, batches.length, frameFiles.length);
+    frameFindings.push(...batchResults);
+    completed += frames.length;
+    onProgress(completed, frameFiles.length);
+  }
+
+  return frameFindings.sort((a, b) => a.frameNumber - b.frameNumber);
+}
+
+async function inspectFrameBatchWithProvider(provider, frames, batchNumber, batchCount, totalFrames) {
+  const prompt = buildBatchDamagePrompt(frames, batchNumber, batchCount, totalFrames);
+  const payload = {
+    model: provider.model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          ...frames.flatMap((frame) => [
+            { type: "text", text: `Frame ${frame.frameNumber} filename: ${frame.filename}` },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${frame.base64}` } }
+          ])
+        ]
+      }
+    ],
+    temperature: 0,
+    max_tokens: Math.max(1200, frames.length * 900),
+    response_format: { type: "json_object" }
+  };
+
+  const response = await fetch(provider.apiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env[provider.keyEnv]}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "damage-scout-demo/0.1",
+      "HTTP-Referer": "http://127.0.0.1:5173",
+      "X-Title": "Damage Scout"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(formatProviderError(provider, response.status, body));
+  }
+
+  const content = body.choices?.[0]?.message?.content || "{}";
+  const parsed = parseJsonContent(content);
+  const byFrame = new Map();
+  for (const item of Array.isArray(parsed.frames) ? parsed.frames : []) {
+    const frameNumber = Number(item.frame_number || item.frameNumber);
+    if (Number.isFinite(frameNumber)) byFrame.set(frameNumber, Array.isArray(item.detections) ? item.detections : []);
+  }
+  if (!byFrame.size && Array.isArray(parsed.detections) && frames.length === 1) {
+    byFrame.set(frames[0].frameNumber, parsed.detections);
+  }
+
+  return frames.map((frame) => ({
+    frameNumber: frame.frameNumber,
+    filename: frame.filename,
+    framePath: frame.framePath,
+    findings: (byFrame.get(frame.frameNumber) || [])
+      .map((detection) => normalizeDetection(detection, frame.imageWidth, frame.imageHeight))
+      .filter(Boolean)
+  }));
+}
+
+function buildBatchDamagePrompt(frames, batchNumber, batchCount, totalFrames) {
+  const frameList = frames.map((frame) => `- Frame ${frame.frameNumber}: ${frame.filename}`).join("\n");
+  return `You are inspecting rental-car walkaround video frames before a renter takes possession.
+
+Find visible exterior vehicle damage in each frame. Prioritize small surface damage too, not just dents.
+
+Damage examples to actively look for:
+- scratches: thin bright/dark lines, clearcoat scratches, keyed marks, swirl clusters, scraped paint
+- scuffs and paint transfer: bumper rubs, white/black transfer marks, cloudy abrasion, scraped corners
+- chips and cracks: paint chips, windshield chips, cracked lights, hairline cracks in plastic trim
+- deformation: dents, creases, bent panels, panel gaps, broken mirror, missing trim, wheel rash, rust
+
+Rules:
+- Treat each frame independently. Do not copy detections from one frame to another.
+- Enumerate distinct damage items visible in each frame.
+- Use lower confidence for uncertain scratches instead of suppressing them.
+- Reject reflections, shadows, dirt, water streaks, normal body seams, license plate text, and camera motion blur unless there is a clear damage cue.
+- Coordinates MUST be normalized decimals from 0 to 1 relative to that frame.
+- If there is no visible damage in a frame, return that frame with an empty detections array.
+
+Batch ${batchNumber} of ${batchCount}. Total sampled frames: ${totalFrames}.
+Frames in this batch:
+${frameList}
+
+Return strict JSON only with this shape:
+{
+  "frames": [
+    {
+      "frame_number": 1,
+      "detections": [
+        {
+          "label": "short damage label",
+          "damage_type": "scratch|scuff|dent|chip|crack|paint_transfer|wheel_rash|rust|broken_part|other",
+          "confidence": 0.0,
+          "severity": "minor|moderate|major",
+          "location": "front bumper / driver door / rear quarter / etc",
+          "bbox": { "x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0 },
+          "evidence": "why this looks damaged"
+        }
+      ]
+    }
+  ]
+}`;
+}
+
 async function inspectImageWithPrompt(provider, base64, prompt, maxCompletionTokens) {
   const payload = {
     model: provider.model,
@@ -1357,6 +1512,14 @@ function average(values) {
   const valid = values.filter((value) => Number.isFinite(value));
   if (!valid.length) return null;
   return Math.round(valid.reduce((total, value) => total + value, 0) / valid.length);
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 async function scoreImageSharpness(imagePath) {
