@@ -100,11 +100,12 @@ function App() {
   const inspecting = job?.status === "inspecting";
   const canRun = Boolean(jobId && extractionReady && !inspecting);
   const extractionProgress = getExtractionProgress(job);
-  const extractionPercent = Math.round(extractionProgress * 100);
+  const previewRevealProgress = file && isPreviewJob(job) ? extractionProgress : 0;
+  const extractionPercent = Math.round(previewRevealProgress * 100);
   const previewStatus = getPreviewStatus({ file, extractionReady, uploadingOrExtracting, inspecting, extractionPercent });
 
-  async function startExtraction(selectedFile = file) {
-    if (!selectedFile || uploadingOrExtracting || inspecting) return;
+  async function startExtraction(selectedFile = file, { force = false } = {}) {
+    if (!selectedFile || (!force && (uploadingOrExtracting || inspecting))) return;
     eventSourceRef.current?.close();
     setError("");
     setEvents([]);
@@ -188,8 +189,10 @@ function App() {
 
   function handleFileChange(event) {
     const selectedFile = event.target.files?.[0] || null;
+    setJob(selectedFile ? makeUploadJob(0) : null);
+    setJobId(null);
     setFile(selectedFile);
-    if (selectedFile) startExtraction(selectedFile);
+    if (selectedFile) startExtraction(selectedFile, { force: true });
   }
 
   function cuePreviewFrame(event) {
@@ -222,7 +225,7 @@ function App() {
             <button
               className={`video-drop ${previewUrl ? "loaded" : "empty"} ${extractionReady ? "ready" : ""}`}
               onClick={() => inputRef.current?.click()}
-              style={{ "--reveal": `${extractionPercent}%`, "--reveal-ratio": extractionProgress }}
+              style={{ "--reveal": `${extractionPercent}%`, "--reveal-ratio": previewRevealProgress }}
               type="button"
             >
               {previewUrl ? (
@@ -459,6 +462,10 @@ function getExtractionProgress(job) {
   const stepProgress = Number(extractStep?.progress);
   if (Number.isFinite(stepProgress)) return Math.max(0, Math.min(1, stepProgress));
   return 0;
+}
+
+function isPreviewJob(job) {
+  return Boolean(job && ["uploading", "queued", "processing", "extracted", "inspecting", "complete"].includes(job.status));
 }
 
 function getPreviewStatus({ file, extractionReady, uploadingOrExtracting, inspecting, extractionPercent }) {
