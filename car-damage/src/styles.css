@@ -146,14 +146,48 @@ h1 {
   overflow: hidden;
   cursor: pointer;
   color: var(--line);
-  background: rgba(77, 77, 77, 0.1);
+  background:
+    linear-gradient(135deg, rgba(77, 77, 77, 0.16) 25%, transparent 25%) 0 0 / 1.2rem 1.2rem,
+    linear-gradient(135deg, transparent 75%, rgba(77, 77, 77, 0.16) 75%) 0 0 / 1.2rem 1.2rem,
+    #f4f4f4;
   border: 2px dashed var(--line);
   border-radius: 0.65rem;
 }
 
 .video-drop.loaded {
   border-style: solid;
-  background: #111111;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0) var(--reveal, 0%), rgba(255, 255, 255, 0.55) var(--reveal, 0%), rgba(255, 255, 255, 0.08) calc(var(--reveal, 0%) + 1.4rem), transparent calc(var(--reveal, 0%) + 3rem)),
+    linear-gradient(135deg, rgba(77, 77, 77, 0.2) 25%, transparent 25%) 0 0 / 1.2rem 1.2rem,
+    linear-gradient(135deg, transparent 75%, rgba(77, 77, 77, 0.2) 75%) 0 0 / 1.2rem 1.2rem,
+    #d8d8d8;
+}
+
+.video-drop.ready {
+  border-color: var(--cerebras);
+}
+
+.preview-reveal {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  clip-path: inset(0 calc(100% - var(--reveal, 0%)) 0 0);
+  transition: clip-path 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.preview-reveal::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: calc(100% - var(--reveal, 0%));
+  width: 0.28rem;
+  background: linear-gradient(180deg, #ffffff, #ffd7c8, #ffffff);
+  box-shadow: 0 0 1rem rgba(255, 255, 255, 0.82), 0 0 1.5rem rgba(241, 90, 41, 0.48);
+  opacity: calc(1 - var(--reveal-ratio, 0));
+  transform: translateX(50%);
 }
 
 .video-preview {
@@ -188,7 +222,18 @@ h1 {
 
 .video-drop.loaded .drop-overlay {
   color: #ffffff;
-  background: rgba(17, 17, 17, 0.24);
+  background: linear-gradient(90deg, rgba(17, 17, 17, 0.2) 0%, rgba(17, 17, 17, 0.54) 100%);
+}
+
+.video-drop.loaded:not(.ready) .drop-overlay {
+  color: var(--line);
+  background: transparent;
+}
+
+.video-drop.loaded:not(.ready) .drop-overlay strong,
+.video-drop.loaded:not(.ready) .drop-overlay span {
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(17, 17, 17, 0.78);
 }
 
 .drop-overlay strong,
@@ -209,6 +254,24 @@ h1 {
   opacity: 0.72;
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.drop-overlay em {
+  display: inline-grid;
+  place-items: center;
+  min-width: 4.1rem;
+  min-height: 2.2rem;
+  padding: 0.28rem 0.7rem;
+  color: #ffffff;
+  background: rgba(17, 17, 17, 0.72);
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: none;
+  box-shadow: 0 0.6rem 1.7rem rgba(17, 17, 17, 0.2);
 }
 
 .hidden-input {

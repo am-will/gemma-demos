@@ -84,6 +84,9 @@ function App() {
   const uploadingOrExtracting = job && ["uploading", "queued", "processing"].includes(job.status);
   const inspecting = job?.status === "inspecting";
   const canRun = Boolean(jobId && extractionReady && !inspecting);
+  const extractionProgress = getExtractionProgress(job);
+  const extractionPercent = Math.round(extractionProgress * 100);
+  const previewStatus = getPreviewStatus({ file, extractionReady, uploadingOrExtracting, inspecting, extractionPercent });
 
   async function startExtraction(selectedFile = file) {
     if (!selectedFile || uploadingOrExtracting || inspecting) return;
@@ -195,22 +198,30 @@ function App() {
         <div className="control-card">
           <div className="picker-field">
             <label className="field-label" htmlFor="video-input">WALKAROUND VIDEO</label>
-            <button className={`video-drop ${previewUrl ? "loaded" : "empty"}`} onClick={() => inputRef.current?.click()} type="button">
+            <button
+              className={`video-drop ${previewUrl ? "loaded" : "empty"} ${extractionReady ? "ready" : ""}`}
+              onClick={() => inputRef.current?.click()}
+              style={{ "--reveal": `${extractionPercent}%`, "--reveal-ratio": extractionProgress }}
+              type="button"
+            >
               {previewUrl ? (
-                <video
-                  className="video-preview"
-                  src={previewUrl}
-                  muted
-                  playsInline
-                  preload="metadata"
-                  onLoadedMetadata={cuePreviewFrame}
-                  onLoadedData={(event) => event.currentTarget.pause()}
-                />
+                <span className="preview-reveal" aria-hidden="true">
+                  <video
+                    className="video-preview"
+                    src={previewUrl}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    onLoadedMetadata={cuePreviewFrame}
+                    onLoadedData={(event) => event.currentTarget.pause()}
+                  />
+                </span>
               ) : null}
               <span className="drop-overlay">
                 <UploadCloud size={36} />
                 <strong>{file ? file.name : "Choose video"}</strong>
-                <span>{file ? formatBytes(file.size) : "MP4, MOV, or WebM"}</span>
+                <span>{previewStatus}</span>
+                {file ? <em>{extractionReady ? "100%" : `${extractionPercent}%`}</em> : null}
               </span>
             </button>
             <input ref={inputRef} id="video-input" className="hidden-input" type="file" accept="video/*" onChange={handleFileChange} />
@@ -411,6 +422,24 @@ function makeUploadJob(percent) {
     pipeline: makeUploadPipeline(),
     providerRuns: makeIdleProviderRuns()
   };
+}
+
+function getExtractionProgress(job) {
+  if (!job) return 0;
+  if (["extracted", "inspecting", "complete"].includes(job.status)) return 1;
+  if (job.status === "failed") return 0;
+  const extractStep = Array.isArray(job.pipeline) ? job.pipeline.find((step) => step.key === "extract") : null;
+  const stepProgress = Number(extractStep?.progress);
+  if (Number.isFinite(stepProgress)) return Math.max(0, Math.min(1, stepProgress));
+  return 0;
+}
+
+function getPreviewStatus({ file, extractionReady, uploadingOrExtracting, inspecting, extractionPercent }) {
+  if (!file) return "MP4, MOV, or WebM";
+  if (inspecting) return "Frames ready";
+  if (extractionReady) return "Frames ready";
+  if (uploadingOrExtracting) return `${extractionPercent}% frames prepared`;
+  return formatBytes(file.size);
 }
 
 function sanitizeEventPayload(payload) {
