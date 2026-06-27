@@ -1,19 +1,37 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, CheckCircle2, Clipboard, Copy, Film, FolderOpen, Gauge, Hourglass, Search, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Film, Gauge, Image as ImageIcon, UploadCloud } from "lucide-react";
 import "./styles.css";
 
 const api = "";
+const PANEL_PROVIDERS = ["gpu", "cerebras"];
+const PROVIDERS = {
+  gpu: { name: "GPU", accent: "gpu" },
+  cerebras: { name: "Cerebras", accent: "cerebras" }
+};
 
 function App() {
+  const [health, setHealth] = useState(null);
   const [file, setFile] = useState(null);
   const [jobId, setJobId] = useState(null);
   const [job, setJob] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [results, setResults] = useState({ gpu: null, cerebras: null });
+  const [winnerProvider, setWinnerProvider] = useState(null);
+  const [runStartedAt, setRunStartedAt] = useState(null);
+  const [now, setNow] = useState(Date.now());
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
   const [settings, setSettings] = useState({ sampleFps: 0.5, maxFrames: 20, confidenceFloor: 0.35, frameConcurrency: 4, tileConcurrency: 3 });
   const [previewUrl, setPreviewUrl] = useState("");
   const inputRef = useRef(null);
+  const eventSourceRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${api}/api/health`)
+      .then(readJsonResponse)
+      .then(setHealth)
+      .catch((err) => setError(err.message));
+  }, []);
 
   useEffect(() => {
     if (!file) {
@@ -25,29 +43,52 @@ function App() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
+  useEffect(() => () => eventSourceRef.current?.close(), []);
+
   useEffect(() => {
     if (!jobId) return undefined;
     const interval = setInterval(async () => {
-      const response = await fetch(`${api}/api/jobs/${jobId}`);
-      const data = await response.json();
-      setJob(data);
-      if (["complete", "failed"].includes(data.status)) clearInterval(interval);
-    }, 900);
+      try {
+        const response = await fetch(`${api}/api/jobs/${jobId}`);
+        const data = await readJsonResponse(response);
+        setJob(data);
+        if (data.result?.providers) {
+          setResults((current) => ({ ...current, ...data.result.providers }));
+        }
+        if (["complete", "failed"].includes(data.status)) clearInterval(interval);
+      } catch (pollError) {
+        setError(pollError.message);
+      }
+    }, 800);
     return () => clearInterval(interval);
   }, [jobId]);
 
-  const detections = job?.result?.detections || [];
-  const report = job?.result?.report || null;
-  const complete = job?.status === "complete";
+  useEffect(() => {
+    const running = job?.status === "inspecting";
+    if (!running) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 47);
+    return () => window.clearInterval(timer);
+  }, [job?.status]);
+
   const extractionReady = job?.status === "extracted";
-  const busy = job && !["complete", "failed", "extracted"].includes(job.status);
-  const reportText = useMemo(() => (report ? formatReportText(report) : ""), [report]);
+  const uploadingOrExtracting = job && ["uploading", "queued", "processing"].includes(job.status);
+  const inspecting = job?.status === "inspecting";
+  const complete = job?.status === "complete";
+  const canRun = Boolean(jobId && extractionReady && !inspecting);
+  const statusTone = job?.status === "failed" ? "bad" : complete ? "good" : uploadingOrExtracting || inspecting ? "active" : "idle";
+  const frameCount = job?.internalFrameCount || job?.settings?.maxFrames || settings.maxFrames;
 
   async function startExtraction(selectedFile = file) {
-    if (!selectedFile || busy) return;
+    if (!selectedFile || uploadingOrExtracting || inspecting) return;
+    eventSourceRef.current?.close();
     setError("");
+    setEvents([]);
+    setResults({ gpu: null, cerebras: null });
+    setWinnerProvider(null);
+    setRunStartedAt(null);
     setJob(makeUploadJob(0));
     setJobId(null);
+
     const form = new FormData();
     form.append("video", selectedFile);
     form.append("sampleFps", settings.sampleFps);
@@ -56,74 +97,74 @@ function App() {
     form.append("frameConcurrency", settings.frameConcurrency);
     form.append("tileConcurrency", settings.tileConcurrency);
 
-    let data;
     try {
-      data = await uploadAnalysis(form, (percent) => setJob(makeUploadJob(percent)));
+      const data = await uploadAnalysis(form, (percent) => setJob(makeUploadJob(percent)));
+      setJobId(data.jobId);
+      setJob({ status: "queued", progress: 3, message: "Preparing frames", pipeline: makeUploadPipeline(100, "complete"), providerRuns: makeIdleProviderRuns() });
     } catch (uploadError) {
       const message = uploadError instanceof Error ? uploadError.message : "Upload failed";
       setError(message);
-      setJob({
-        status: "failed",
-        progress: 0,
-        message,
-        pipeline: makeUploadPipeline(0, "failed")
-      });
-      return;
+      setJob({ status: "failed", progress: 0, message, pipeline: makeUploadPipeline(0, "failed"), providerRuns: makeIdleProviderRuns() });
     }
-    setJobId(data.jobId);
-    setJob({ status: "queued", progress: 3, message: "Queued video inspection", pipeline: makeUploadPipeline(100, "complete") });
-    setCopied(false);
   }
 
   async function startInspection() {
-    if (!jobId || !extractionReady || busy) return;
+    if (!canRun) return;
     setError("");
+    setEvents([]);
+    setResults({ gpu: null, cerebras: null });
+    setWinnerProvider(null);
+    const startedAt = Date.now();
+    setRunStartedAt(startedAt);
+    setNow(startedAt);
+
     try {
       await continueAnalysis(jobId);
+      openEventStream(jobId);
       setJob((current) => ({
         ...current,
         status: "inspecting",
-        message: "Gemma inspection starting",
-        progress: Math.max(current?.progress || 0, 18)
+        progress: Math.max(current?.progress || 0, 20),
+        message: "Running GPU and Cerebras comparison"
       }));
     } catch (inspectionError) {
       const message = inspectionError instanceof Error ? inspectionError.message : "Inspection failed";
       setError(message);
-      setJob((current) => ({
-        ...current,
-        status: "failed",
-        error: message,
-        message,
-        pipeline: current?.pipeline || makeUploadPipeline(100, "complete")
-      }));
     }
+  }
+
+  function openEventStream(nextJobId) {
+    eventSourceRef.current?.close();
+    const source = new EventSource(`${api}/api/jobs/${nextJobId}/events`);
+    eventSourceRef.current = source;
+    ["trace", "partial_result", "provider_done", "run_done", "error"].forEach((type) => {
+      source.addEventListener(type, (event) => {
+        const payload = sanitizeEventPayload(JSON.parse(event.data));
+        setEvents((current) => [...current, payload]);
+        if (type === "provider_done") {
+          setResults((current) => ({ ...current, [payload.provider]: payload }));
+          if (payload.status === "complete" && Number.isFinite(payload.totalLatencyMs)) {
+            setWinnerProvider((current) => current || payload.provider);
+          }
+        }
+        if (type === "error") {
+          setResults((current) => payload.provider in current ? { ...current, [payload.provider]: { provider: payload.provider, status: "failed", error: payload.message } } : current);
+        }
+        if (type === "run_done") {
+          source.close();
+        }
+      });
+    });
+    source.onerror = () => {
+      setEvents((current) => [...current, { type: "error", at: new Date().toISOString(), provider: "system", message: "Trace stream disconnected." }]);
+      source.close();
+    };
   }
 
   function handleFileChange(event) {
     const selectedFile = event.target.files?.[0] || null;
     setFile(selectedFile);
-    if (selectedFile) {
-      startExtraction(selectedFile);
-    }
-  }
-
-  async function copyReport() {
-    if (!reportText) return;
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(reportText);
-    } else {
-      const element = document.createElement("textarea");
-      element.value = reportText;
-      element.setAttribute("readonly", "");
-      element.style.position = "fixed";
-      element.style.left = "-9999px";
-      document.body.appendChild(element);
-      element.select();
-      document.execCommand("copy");
-      document.body.removeChild(element);
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    if (selectedFile) startExtraction(selectedFile);
   }
 
   function cuePreviewFrame(event) {
@@ -131,251 +172,175 @@ function App() {
     try {
       video.currentTime = Math.min(0.1, Math.max(0, video.duration || 0));
     } catch {
-      // Some browsers delay seeking until more video data is buffered.
+      // Metadata seeking is best-effort while the preview loads.
     }
   }
 
-  const statusTone = useMemo(() => {
-    if (job?.status === "failed") return "bad";
-    if (complete) return "good";
-    if (busy) return "active";
-    return "idle";
-  }, [job?.status, complete, busy]);
-
   return (
-    <main className="shell">
-      <span className="confetti c1" aria-hidden="true" />
-      <span className="confetti c2" aria-hidden="true" />
-      <span className="confetti c3" aria-hidden="true" />
-      <span className="confetti c4" aria-hidden="true" />
-
-      <section className="mast">
-        <div>
-          <p className="eyebrow">Rental fleet intake</p>
-          <h1>Damage <span className="pop">Scout</span></h1>
-          <p className="lede">Upload a walkaround video of your car, and Gemma 4 will annotate the damage.</p>
+    <main className="page-shell">
+      <section className="hero">
+        <div className="hero-copy">
+          <div className="demo-badge"><Gauge size={26} /> Gemma 4 Demo</div>
+          <h1>Damage Scout</h1>
+          <p><strong>Compare car damage inspection</strong> across GPU and Cerebras</p>
         </div>
-        <div className={`status ${statusTone}`}>
-          <Gauge size={18} />
-          <span>{job?.message || "Ready for inspection"}</span>
-        </div>
-      </section>
 
-      <section className="workbench">
-        <div className="uploadPanel">
-          <button className={`drop ${previewUrl ? "hasPreview" : ""}`} onClick={() => inputRef.current?.click()} type="button">
-            {previewUrl ? (
-              <video
-                className="dropPreview"
-                src={previewUrl}
-                muted
-                playsInline
-                preload="metadata"
-                onLoadedMetadata={cuePreviewFrame}
-                onLoadedData={(event) => event.currentTarget.pause()}
-              />
-            ) : null}
-            <span className="dropOverlay">
-              <UploadCloud className="dropIcon" size={54} />
-              <strong>{file ? file.name : "Choose walkaround video"}</strong>
-              <span>{file ? `${formatBytes(file.size)} selected` : "MP4, MOV, or WebM. Keep videos under 60 seconds for fast iteration."}</span>
-            </span>
+        <div className="control-card">
+          <div className="picker-field">
+            <label className="field-label" htmlFor="video-input">WALKAROUND VIDEO</label>
+            <button className={`video-drop ${previewUrl ? "loaded" : "empty"}`} onClick={() => inputRef.current?.click()} type="button">
+              {previewUrl ? (
+                <video
+                  className="video-preview"
+                  src={previewUrl}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onLoadedMetadata={cuePreviewFrame}
+                  onLoadedData={(event) => event.currentTarget.pause()}
+                />
+              ) : null}
+              <span className="drop-overlay">
+                <UploadCloud size={36} />
+                <strong>{file ? file.name : "Choose video"}</strong>
+                <span>{file ? formatBytes(file.size) : "MP4, MOV, or WebM"}</span>
+              </span>
+            </button>
+            <input ref={inputRef} id="video-input" className="hidden-input" type="file" accept="video/*" onChange={handleFileChange} />
+          </div>
+
+          <div className="settings-field">
+            <label className="field-label">FRAME PREP</label>
+            <div className="settings-grid">
+              <NumberField label="FPS" min="0.2" max="3" step="0.2" value={settings.sampleFps} onChange={(value) => setSettings({ ...settings, sampleFps: value })} />
+              <NumberField label="Frames" min="1" max="80" value={settings.maxFrames} onChange={(value) => setSettings({ ...settings, maxFrames: value })} />
+              <NumberField label="Confidence" min="0" max="1" step="0.05" value={settings.confidenceFloor} onChange={(value) => setSettings({ ...settings, confidenceFloor: value })} />
+            </div>
+            <div className={`status-pill ${statusTone}`}>
+              <Film size={18} />
+              <span>{job?.message || "Upload starts frame extraction"}</span>
+            </div>
+          </div>
+
+          <button className="primary-button" disabled={!canRun} onClick={startInspection} type="button">
+            {inspecting ? "Running comparison" : extractionReady ? "Run damage comparison" : uploadingOrExtracting ? "Extracting frames" : "Upload video first"}
           </button>
-          <input ref={inputRef} hidden type="file" accept="video/*" onChange={handleFileChange} />
-
-          <div className="controls">
-            <label>
-              <span>FPS</span>
-              <input type="number" step="0.2" min="0.2" max="3" value={settings.sampleFps} onChange={(event) => setSettings({ ...settings, sampleFps: event.target.value })} />
-            </label>
-            <label>
-              <span>Frames</span>
-              <input type="number" min="1" max="80" value={settings.maxFrames} onChange={(event) => setSettings({ ...settings, maxFrames: event.target.value })} />
-            </label>
-            <label>
-              <span>Confidence</span>
-              <input type="number" step="0.05" min="0" max="1" value={settings.confidenceFloor} onChange={(event) => setSettings({ ...settings, confidenceFloor: event.target.value })} />
-            </label>
-            <label>
-              <span>Frame jobs</span>
-              <input type="number" min="1" max="8" value={settings.frameConcurrency} onChange={(event) => setSettings({ ...settings, frameConcurrency: event.target.value })} />
-            </label>
-            <label>
-              <span>Tile jobs</span>
-              <input type="number" min="1" max="6" value={settings.tileConcurrency} onChange={(event) => setSettings({ ...settings, tileConcurrency: event.target.value })} />
-            </label>
-          </div>
-
-          <button className="primary" disabled={!file || busy || (job && !extractionReady && !["complete", "failed"].includes(job.status))} onClick={extractionReady ? startInspection : () => startExtraction()} type="button">
-            <Search size={18} />
-            <span>{busy ? "Working..." : extractionReady ? "Run Gemma inspection" : "Extract frames"}</span>
-          </button>
-          {error ? <p className="error"><AlertTriangle size={16} />{error}</p> : null}
-        </div>
-
-        <div className="progressPanel">
-          <div className="meterHeader">
-            <Film size={20} />
-            <span>{job?.status || "No job yet"}</span>
-            <strong>{job?.progress || 0}%</strong>
-          </div>
-          <div className="meter"><div style={{ width: `${job?.progress || 0}%` }} /></div>
-          <div className="processDashboard">
-            {(job?.pipeline || makeIdlePipeline()).filter((step) => step.key !== "upload").map((step) => (
-              <div className={`processStep ${step.status}`} key={step.key}>
-                <span className="processDot" aria-hidden="true" />
-                <div className="processCopy">
-                  <strong>{step.label}</strong>
-                  <span className="stepProgress" aria-label={`${step.label} ${formatStepMeta(step)}`}>
-                    <span style={{ width: `${Math.round((step.progress || 0) * 100)}%` }} />
-                  </span>
-                </div>
-                <small>{formatStepMeta(step)}</small>
-              </div>
-            ))}
-          </div>
-          {job?.status === "failed" ? <p className="error"><AlertTriangle size={16} />{job.error}</p> : null}
+          {error ? <div className="error-pill"><AlertTriangle size={16} /> {error}</div> : null}
         </div>
       </section>
 
-      {complete ? (
-        <section className="results">
-          <div className="sectionTitle">
-            <h2>Evidence Frames</h2>
-            <span>{`${detections.length} selected`}</span>
-          </div>
-
-          {detections.length === 0 ? (
-            <div className="empty"><CheckCircle2 size={28} />No visible damage candidates above the confidence threshold.</div>
-          ) : null}
-
-          <div className="cards">
-            {detections.map((item, index) => (
-              <article className="card" key={`${item.frameNumber}-${item.label}-${index}`}>
-                <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} />
-                <div className="cardBody">
-                  <div className="cardTop">
-                    <h3>{item.label}</h3>
-                    <span>{Math.round(item.confidence * 100)}%</span>
-                  </div>
-                  <p>{item.location} · {item.severity}</p>
-                  <p className="evidence">{item.evidence}</p>
-                  <small>{item.imageLabel || `Image ${index + 1}`} · Frame {item.frameNumber}</small>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="report">
-        <div className="sectionTitle">
-          <h2>Damage Report</h2>
-          {report ? (
-            <div className="sectionActions">
-              <a href={`/outputs/jobs/${job.id}`} target="_blank" rel="noreferrer">
-                <FolderOpen size={16} />
-                Output folder
-              </a>
-            </div>
-          ) : null}
+      <section className="prep-strip">
+        <div className="prep-meter">
+          <span>{job?.status || "idle"}</span>
+          <strong>{job?.progress || 0}%</strong>
+          <i style={{ width: `${job?.progress || 0}%` }} />
         </div>
-
-        {complete && report ? (
-          <div className="reportSurface">
-            <div className="reportHeader">
-              <div>
-                <p className="reportKicker">{report.sourceVideo || "Uploaded video"}</p>
-                <h3>{report.summary?.headline || `Found ${report.totalDamageItems} unique damage candidate${report.totalDamageItems === 1 ? "" : "s"}`}</h3>
-              </div>
-              <div className="reportStats">
-                <Stat label="Damage items" value={report.totalDamageItems} />
-              </div>
-            </div>
-
-            {report.items.length ? (
-              <div className="reportTableWrap">
-                <table className="reportTable">
-                  <thead>
-                    <tr>
-                      <th>Image</th>
-                      <th>Damage</th>
-                      <th>Vehicle part</th>
-                      <th>Severity</th>
-                      <th>Confidence</th>
-                      <th>Evidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.items.map((item) => (
-                      <tr key={item.id}>
-                        <td>
-                          <a href={item.imageUrl} target="_blank" rel="noreferrer">{item.imageLabel}</a>
-                          <small>Frame {item.frameNumber}</small>
-                        </td>
-                        <td>{item.damageTypeLabel}</td>
-                        <td>{item.vehiclePart}</td>
-                        <td>{item.severity}</td>
-                        <td>{item.confidencePercent}%</td>
-                        <td>{item.evidence || item.sentence}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="empty"><CheckCircle2 size={28} />No visible damage candidates above the confidence threshold.</div>
-            )}
-
-            <div className="copyBlock">
-              <div className="copyHeader">
-                <span><Clipboard size={16} /> Copyable report</span>
-                <button type="button" onClick={copyReport}>
-                  <Copy size={16} />
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-              <pre>{reportText}</pre>
-            </div>
-          </div>
-        ) : (
-          <div className="reportPlaceholder">
-            <Hourglass size={48} strokeWidth={2.25} />
-            <span>Final report appears here after the video inspection completes.</span>
-          </div>
-        )}
+        <p>{extractionReady ? "Frames are ready. Run will go straight to the AI model calls." : `Preparing up to ${frameCount} sampled frames before comparison.`}</p>
       </section>
+
+      <section className="agents-grid">
+        {PANEL_PROVIDERS.map((provider) => (
+          <AgentPanel
+            key={provider}
+            provider={provider}
+            health={health?.providers?.[provider]}
+            events={events.filter((event) => event.provider === provider)}
+            result={results[provider] || job?.result?.providers?.[provider]}
+            runState={job?.providerRuns?.[provider]}
+            running={inspecting}
+            winnerProvider={winnerProvider}
+            runStartedAt={runStartedAt}
+            now={now}
+          />
+        ))}
+      </section>
+      <footer className="brand-footer">Cerebras</footer>
     </main>
   );
 }
 
-function formatReportText(report) {
-  const lines = [
-    report.reportTitle || "Rental Car Damage Report",
-    `Source video: ${report.sourceVideo || "uploaded video"}`,
-    `Generated: ${report.generatedAt}`,
-    `Model: ${report.model}`,
-    `Sampled frames: ${report.sampledFrames}`,
-    `Damage items: ${report.totalDamageItems}`,
-    "",
-    "Summary",
-    report.summary?.headline || "",
-    "",
-    "Damage Items"
-  ];
+function AgentPanel({ provider, health, events, result, runState, running, winnerProvider, runStartedAt, now }) {
+  const config = PROVIDERS[provider];
+  const detections = (result?.detections || []).slice(0, 6);
+  const totalDetections = result?.detections?.length || 0;
+  const finished = Boolean(result?.totalLatencyMs);
+  const isWinner = winnerProvider === provider;
+  const isLoser = Boolean(winnerProvider && finished && !isWinner);
+  const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
+  const status = result?.status || runState?.status || (running ? "running" : "idle");
 
-  if (!report.items?.length) {
-    lines.push("No visible damage candidates were found above the confidence threshold.");
-    return lines.join("\n");
-  }
+  return (
+    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""}`}>
+      <div className="agent-top">
+        <header>
+          <div>
+            <h2>{config.name}</h2>
+            <span>{sanitizeTraceText(health?.model || runState?.model || "gemma-4")}</span>
+          </div>
+          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
+        </header>
+        <TraceWindow events={events} />
+      </div>
 
-  report.items.forEach((item) => {
-    lines.push(
-      `${item.imageLabel}: ${item.damageTypeLabel} on the ${item.vehiclePart} (${item.severity}, ${item.confidencePercent}% confidence). Frame ${item.frameNumber}. ${item.evidence || item.sentence}`
-    );
-  });
+      <div className="results-box">
+        <div className="results-heading">
+          <h3>{totalDetections} Evidence Frame{totalDetections === 1 ? "" : "s"}</h3>
+          <span>{status}</span>
+        </div>
+        {result?.error ? <div className="panel-error">{sanitizeTraceText(result.error)}</div> : null}
+        {!result?.error && !detections.length ? (
+          <p className="empty-state">{finished ? "No visible damage candidates above threshold." : "Annotated damage thumbnails appear here."}</p>
+        ) : null}
+        {detections.length ? (
+          <div className="evidence-grid">
+            {detections.map((item, index) => (
+              <a className="evidence-tile" href={item.imageUrl} target="_blank" rel="noreferrer" key={`${provider}-${item.imageUrl || index}`}>
+                {item.imageUrl ? <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} /> : <span className="image-placeholder"><ImageIcon size={24} /></span>}
+                <figcaption>
+                  <strong>{item.label || "damage"}</strong>
+                  <span>{Math.round(Number(item.confidence || 0) * 100)}% · Frame {item.frameNumber}</span>
+                </figcaption>
+              </a>
+            ))}
+          </div>
+        ) : null}
+        {totalDetections > detections.length ? <p className="more-results">Showing 6 of {totalDetections}. Full manifest is in the job output.</p> : null}
+      </div>
+    </article>
+  );
+}
 
-  return lines.join("\n");
+function TraceWindow({ events }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const trace = ref.current;
+    if (!trace) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      trace.scrollTop = trace.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [events.length]);
+
+  return (
+    <div className="trace-window" ref={ref}>
+      {events.length ? events.map((event, index) => (
+        <div className={`trace-line ${event.phase || event.type}`} key={`${event.at}-${index}`}>
+          <span className="trace-time">{new Date(event.at).toLocaleTimeString()}</span>
+          <span className="trace-phase">{event.phase || event.type}</span>
+          <pre>{formatTraceMessage(event)}</pre>
+        </div>
+      )) : <div className="trace-placeholder">Waiting for agent trace...</div>}
+    </div>
+  );
+}
+
+function NumberField({ label, value, onChange, ...props }) {
+  return (
+    <label>
+      <span>{label}</span>
+      <input type="number" value={value} onChange={(event) => onChange(event.target.value)} {...props} />
+    </label>
+  );
 }
 
 function uploadAnalysis(form, onUploadProgress) {
@@ -404,26 +369,33 @@ function uploadAnalysis(form, onUploadProgress) {
 
 async function continueAnalysis(jobId) {
   const response = await fetch(`${api}/api/jobs/${jobId}/inspect`, { method: "POST" });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || "Inspection failed");
+  return readJsonResponse(response);
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text.trim()) {
+    if (!response.ok) throw new Error(`HTTP ${response.status}: empty response from server`);
+    return {};
   }
+  let data = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`HTTP ${response.status}: server returned non-JSON response`);
+  }
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
 
-function makeIdlePipeline() {
-  return [
-    { key: "extract", label: "Extract frames", status: "pending", detail: "Waiting for upload", progress: 0 },
-    { key: "inspect", label: "Gemma 4 Inspection", status: "pending", detail: "Waiting for frames", progress: 0 },
-    { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
-    { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
-    { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }
-  ];
+function makeIdleProviderRuns() {
+  return Object.fromEntries(PANEL_PROVIDERS.map((provider) => [provider, { provider, label: PROVIDERS[provider].name, status: "idle", model: "gemma-4" }]));
 }
 
-function makeUploadPipeline(percent, status = "active") {
-  const pipeline = makeIdlePipeline();
-  return pipeline;
+function makeUploadPipeline() {
+  return [
+    { key: "extract", label: "Extract frames", status: "active", detail: "Preparing frames", progress: 0 }
+  ];
 }
 
 function makeUploadJob(percent) {
@@ -431,30 +403,42 @@ function makeUploadJob(percent) {
     status: "uploading",
     progress: Math.max(1, Math.min(4, Math.round(percent / 25))),
     message: `Uploading video (${percent}%)`,
-    pipeline: makeUploadPipeline(percent)
+    pipeline: makeUploadPipeline(),
+    providerRuns: makeIdleProviderRuns()
   };
 }
 
-function formatStepMeta(step) {
-  if (step.status === "complete") return step.elapsedMs ? formatDuration(step.elapsedMs) : "Done";
-  if (step.status === "active") return Number.isFinite(step.progress) ? `${Math.round(step.progress * 100)}%` : "Running";
-  if (step.status === "failed") return "Failed";
-  return "Waiting";
+function sanitizeEventPayload(payload) {
+  const copy = { ...payload };
+  for (const [key, value] of Object.entries(copy)) {
+    if (typeof value === "string") copy[key] = sanitizeTraceText(value);
+  }
+  return copy;
 }
 
-function formatDuration(ms) {
-  if (!Number.isFinite(ms)) return "";
-  if (ms < 1000) return `${Math.max(1, Math.round(ms))}ms`;
-  return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
+function sanitizeTraceText(value) {
+  return String(value || "")
+    .replaceAll("OpenRouter", "GPU")
+    .replaceAll("openrouter", "gpu")
+    .replaceAll("api.openrouter.ai", "gpu.endpoint")
+    .replaceAll("$OPENROUTER_API_KEY", "$GPU_API_KEY")
+    .replace(/:free\b/gi, "")
+    .replace(/\bfree\b/gi, "standard");
 }
 
-function Stat({ label, value }) {
-  return (
-    <div className="stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
+function formatTraceMessage(event) {
+  if (event.type === "partial_result") return `${event.completed || 0} of ${event.total || 0} frames inspected`;
+  if (event.type === "provider_done") return `${event.status}: ${(event.detections || []).length} evidence frames`;
+  if (event.type === "error") return sanitizeTraceText(event.message);
+  return sanitizeTraceText(event.message || JSON.stringify(event));
+}
+
+function formatTimer(ms) {
+  const safeMs = Math.max(0, Math.round(ms));
+  const minutes = Math.floor(safeMs / 60000);
+  const seconds = Math.floor((safeMs % 60000) / 1000);
+  const milliseconds = safeMs % 1000;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
 }
 
 function formatBytes(bytes) {
