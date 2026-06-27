@@ -183,9 +183,9 @@ h1 {
   top: 0;
   bottom: 0;
   right: calc(100% - var(--reveal, 0%));
-  width: 0.28rem;
-  background: linear-gradient(180deg, #ffffff, #ffd7c8, #ffffff);
-  box-shadow: 0 0 1rem rgba(255, 255, 255, 0.82), 0 0 1.5rem rgba(241, 90, 41, 0.48);
+  width: 0.62rem;
+  background: linear-gradient(180deg, #151515, #4d4d4d 48%, #151515);
+  box-shadow: 0 0 0 0.12rem rgba(255, 255, 255, 0.2), 0 0 1.15rem rgba(17, 17, 17, 0.36), 0 0 1.5rem rgba(241, 90, 41, 0.38);
   opacity: calc(1 - var(--reveal-ratio, 0));
   transform: translateX(50%);
 }
