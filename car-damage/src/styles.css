@@ -274,6 +274,10 @@ h1 {
   box-shadow: 0 0.6rem 1.7rem rgba(17, 17, 17, 0.2);
 }
 
+.drop-overlay em.ghost {
+  visibility: hidden;
+}
+
 .hidden-input {
   position: absolute;
   width: 1px;

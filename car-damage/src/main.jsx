@@ -221,7 +221,7 @@ function App() {
                 <UploadCloud size={36} />
                 <strong>{file ? file.name : "Choose video"}</strong>
                 <span>{previewStatus}</span>
-                {file ? <em>{extractionReady ? "100%" : `${extractionPercent}%`}</em> : null}
+                <em className={file ? "" : "ghost"}>{file ? extractionReady ? "100%" : `${extractionPercent}%` : "0%"}</em>
               </span>
             </button>
             <input ref={inputRef} id="video-input" className="hidden-input" type="file" accept="video/*" onChange={handleFileChange} />
