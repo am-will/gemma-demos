@@ -1,14 +1,24 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, CheckCircle2, Film, Gauge, Image as ImageIcon, UploadCloud } from "lucide-react";
+import { AlertTriangle, Image as ImageIcon, UploadCloud } from "lucide-react";
 import "./styles.css";
 
 const api = "";
-const PANEL_PROVIDERS = ["gpu", "cerebras"];
+const PANEL_PROVIDERS = ["cerebras", "gpu"];
 const PROVIDERS = {
-  gpu: { name: "GPU", accent: "gpu" },
-  cerebras: { name: "Cerebras", accent: "cerebras" }
+  cerebras: { name: "Cerebras", accent: "cerebras", logo: "/assets/cerebras-logo.png" },
+  gpu: { name: "GPU", accent: "gpu", logo: "/assets/gemini-logo.png" }
 };
+const CONFETTI_COLORS = ["#ffffff", "#ffd23f", "#5ce6a5", "#36c5ff", "#ff5fa2", "#bb8bff", "#fff0bf"];
+const CONFETTI_SHAPES = ["rect", "rect", "rect", "circle", "ribbon"];
+const BURST_ZONES = [
+  { x: [10, 34], y: [10, 30] },
+  { x: [40, 62], y: [8, 26] },
+  { x: [66, 90], y: [12, 32] },
+  { x: [12, 36], y: [54, 80] },
+  { x: [42, 64], y: [58, 84] },
+  { x: [66, 90], y: [52, 78] }
+];
 
 function App() {
   const [health, setHealth] = useState(null);
@@ -73,9 +83,7 @@ function App() {
   const extractionReady = job?.status === "extracted";
   const uploadingOrExtracting = job && ["uploading", "queued", "processing"].includes(job.status);
   const inspecting = job?.status === "inspecting";
-  const complete = job?.status === "complete";
   const canRun = Boolean(jobId && extractionReady && !inspecting);
-  const statusTone = job?.status === "failed" ? "bad" : complete ? "good" : uploadingOrExtracting || inspecting ? "active" : "idle";
   const frameCount = job?.internalFrameCount || job?.settings?.maxFrames || settings.maxFrames;
 
   async function startExtraction(selectedFile = file) {
@@ -180,7 +188,7 @@ function App() {
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="demo-badge"><Gauge size={26} /> Gemma 4 Demo</div>
+          <div className="demo-badge"><img src="/assets/gemini-logo.png" alt="" /> Gemma 4 Demo</div>
           <h1>Damage Scout</h1>
           <p><strong>Compare car damage inspection</strong> across GPU and Cerebras</p>
         </div>
@@ -216,10 +224,6 @@ function App() {
               <NumberField label="Frames" min="1" max="80" value={settings.maxFrames} onChange={(value) => setSettings({ ...settings, maxFrames: value })} />
               <NumberField label="Confidence" min="0" max="1" step="0.05" value={settings.confidenceFloor} onChange={(value) => setSettings({ ...settings, confidenceFloor: value })} />
             </div>
-            <div className={`status-pill ${statusTone}`}>
-              <Film size={18} />
-              <span>{job?.message || "Upload starts frame extraction"}</span>
-            </div>
           </div>
 
           <button className="primary-button" disabled={!canRun} onClick={startInspection} type="button">
@@ -254,7 +258,7 @@ function App() {
           />
         ))}
       </section>
-      <footer className="brand-footer">Cerebras</footer>
+      <footer className="brand-footer"><img src="/assets/cerebras-wordmark.png" alt="Cerebras" /></footer>
     </main>
   );
 }
@@ -268,13 +272,25 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
   const isLoser = Boolean(winnerProvider && finished && !isWinner);
   const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
   const status = result?.status || runState?.status || (running ? "running" : "idle");
+  const [celebrate, setCelebrate] = useState(false);
+
+  useEffect(() => {
+    if (provider !== "cerebras" || !finished) {
+      setCelebrate(false);
+      return undefined;
+    }
+    setCelebrate(true);
+    const timeout = setTimeout(() => setCelebrate(false), 3200);
+    return () => clearTimeout(timeout);
+  }, [provider, finished]);
 
   return (
-    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""}`}>
+    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""}`}>
+      {celebrate ? <CerebrasCelebration /> : null}
       <div className="agent-top">
         <header>
           <div>
-            <h2>{config.name}</h2>
+            <h2><img src={config.logo} alt="" /> {config.name}</h2>
             <span>{sanitizeTraceText(health?.model || runState?.model || "gemma-4")}</span>
           </div>
           <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
@@ -307,6 +323,25 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
         {totalDetections > detections.length ? <p className="more-results">Showing 6 of {totalDetections}. Full manifest is in the job output.</p> : null}
       </div>
     </article>
+  );
+}
+
+function CerebrasCelebration() {
+  const burstsRef = useRef(null);
+  if (!burstsRef.current) burstsRef.current = createBursts();
+
+  return (
+    <div className="celebration" aria-hidden="true">
+      {burstsRef.current.map((burst) => (
+        <div className="confetti-burst" key={burst.id} style={{ left: burst.left, top: burst.top }}>
+          {burst.pieces.map((piece) => (
+            <span key={piece.id} className="confetti-piece" style={piece.style}>
+              <i className={`confetti-shape ${piece.shape}`} style={{ "--color": piece.color }} />
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -422,6 +457,9 @@ function sanitizeTraceText(value) {
     .replaceAll("openrouter", "gpu")
     .replaceAll("api.openrouter.ai", "gpu.endpoint")
     .replaceAll("$OPENROUTER_API_KEY", "$GPU_API_KEY")
+    .replaceAll("Google AI Studio", "GPU provider")
+    .replaceAll("googleapis.com", "gpu.provider")
+    .replaceAll("ai.google.dev", "gpu.provider")
     .replace(/:free\b/gi, "")
     .replace(/\bfree\b/gi, "standard");
 }
@@ -446,6 +484,53 @@ function formatBytes(bytes) {
   const units = ["B", "KB", "MB", "GB"];
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function createBurstPieces(baseDelay) {
+  const count = 14 + Math.floor(Math.random() * 5);
+  return Array.from({ length: count }, (_, id) => {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 2.6 + Math.random() * 5;
+    const burstX = Math.cos(angle) * distance;
+    const burstY = Math.sin(angle) * distance - 1.2;
+    const fallX = burstX + (Math.random() - 0.5) * 2.5;
+    const fallY = burstY + 6 + Math.random() * 9;
+    const spin = (Math.random() < 0.5 ? -1 : 1) * (220 + Math.random() * 560);
+    const size = 0.38 + Math.random() * 0.4;
+    return {
+      id,
+      shape: pick(CONFETTI_SHAPES),
+      color: pick(CONFETTI_COLORS),
+      style: {
+        "--bx": `${burstX.toFixed(2)}rem`,
+        "--by": `${burstY.toFixed(2)}rem`,
+        "--fx": `${fallX.toFixed(2)}rem`,
+        "--fy": `${fallY.toFixed(2)}rem`,
+        "--spin": `${Math.round(spin)}deg`,
+        "--size": `${size.toFixed(2)}rem`,
+        "--delay": `${baseDelay + Math.round(Math.random() * 70)}ms`,
+        "--dur": `${Math.round(1100 + Math.random() * 650)}ms`,
+        "--flutter": `${Math.round(320 + Math.random() * 500)}ms`
+      }
+    };
+  });
+}
+
+function inZone([min, max]) {
+  return min + Math.random() * (max - min);
+}
+
+function createBursts() {
+  return BURST_ZONES.map((zone, id) => ({
+    id,
+    left: `${inZone(zone.x).toFixed(1)}%`,
+    top: `${inZone(zone.y).toFixed(1)}%`,
+    pieces: createBurstPieces(id * 95 + Math.round(Math.random() * 70))
+  }));
 }
 
 createRoot(document.getElementById("root")).render(<App />);

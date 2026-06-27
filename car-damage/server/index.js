@@ -62,7 +62,7 @@ const providers = {
     hasKey: () => Boolean(process.env.CEREBRAS_API_KEY)
   }
 };
-const providerOrder = ["gpu", "cerebras"];
+const providerOrder = ["cerebras", "gpu"];
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -334,6 +334,8 @@ async function runDamageProvider({ job, provider, originalName, jobOut, framesDi
     message: `Agent online with model ${provider.publicModel}`
   });
   if (!provider.hasKey()) throw new Error(`Missing ${provider.keyEnv}.`);
+
+  await preflightProvider(provider, path.join(framesDir, frameFiles[0]), (type, payload) => emitJobEvent(job, type, payload));
 
   setProviderStep(job, provider.id, "inspect", "active", `0 of ${frameFiles.length} frames inspected`, { progress: 0 });
   emitJobEvent(job, "trace", {
@@ -671,6 +673,9 @@ function sanitizeTraceText(value) {
     .replaceAll("openrouter", "gpu")
     .replaceAll("api.openrouter.ai", "gpu.endpoint")
     .replaceAll("$OPENROUTER_API_KEY", "$GPU_API_KEY")
+    .replaceAll("Google AI Studio", "GPU provider")
+    .replaceAll("googleapis.com", "gpu.provider")
+    .replaceAll("ai.google.dev", "gpu.provider")
     .replace(/:free\b/gi, "")
     .replace(/\bfree\b/gi, "standard");
 }
@@ -1064,12 +1069,71 @@ async function inspectImageWithPrompt(provider, base64, prompt, maxCompletionTok
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`${provider.label} API ${response.status}: ${body.message || JSON.stringify(body)}`);
+    throw new Error(formatProviderError(provider, response.status, body));
   }
 
   const content = body.choices?.[0]?.message?.content || "{}";
   const parsed = parseJsonContent(content);
   return Array.isArray(parsed.detections) ? parsed.detections : [];
+}
+
+async function preflightProvider(provider, framePath, emit) {
+  if (provider.actualProvider !== "openrouter") return;
+  emit("trace", {
+    provider: provider.id,
+    phase: "preflight",
+    message: `Testing ${provider.apiHostLabel} with one extracted frame`
+  });
+  const base64 = await readFile(framePath, "base64");
+  const payload = {
+    model: provider.model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } },
+          { type: "text", text: "Reply with JSON only: {\"ok\":true}" }
+        ]
+      }
+    ],
+    temperature: 0,
+    max_tokens: 48,
+    response_format: { type: "json_object" }
+  };
+  const response = await fetch(provider.apiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env[provider.keyEnv]}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "damage-scout-demo/0.1",
+      "HTTP-Referer": "http://127.0.0.1:5173",
+      "X-Title": "Damage Scout"
+    },
+    body: JSON.stringify(payload)
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(formatProviderError(provider, response.status, body, "preflight"));
+  emit("trace", {
+    provider: provider.id,
+    phase: "response",
+    message: "GPU vision preflight passed"
+  });
+}
+
+function formatProviderError(provider, status, body, context = "request") {
+  const rawMessage = String(body?.error?.message || body?.message || JSON.stringify(body || {}));
+  const text = rawMessage.toLowerCase();
+  if (status === 429 || text.includes("quota") || text.includes("rate limit") || text.includes("resource_exhausted")) {
+    return `${provider.label} ${context} rate limited. Retry in a moment or reduce the frame count.`;
+  }
+  if (status === 401 || status === 403) {
+    return `${provider.label} ${context} authentication failed. Check the server-side API key.`;
+  }
+  if (status >= 500) {
+    return `${provider.label} ${context} returned HTTP ${status}. Retry shortly.`;
+  }
+  return `${provider.label} ${context} failed with HTTP ${status}: ${cleanText(sanitizeTraceText(rawMessage))}`;
 }
 
 function parseJsonContent(content) {
