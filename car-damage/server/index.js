@@ -7,6 +7,7 @@ import { createReadStream } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { performance } from "node:perf_hooks";
 import sharp from "sharp";
 import dotenv from "dotenv";
 
@@ -19,7 +20,8 @@ const uploadsDir = path.join(runtimeDir, "uploads");
 const tmpDir = path.join(runtimeDir, "tmp");
 const outputsDir = path.join(rootDir, "outputs", "jobs");
 const distDir = path.join(rootDir, "dist");
-const model = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
+const cerebrasModel = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
+const openRouterModel = process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free";
 const port = Number(process.env.PORT || 8787);
 const extractionMaxWidth = Number(process.env.FRAME_EXTRACTION_MAX_WIDTH || 1920);
 const extractionJpegQuality = Number(process.env.FRAME_EXTRACTION_JPEG_QUALITY || 92);
@@ -36,6 +38,31 @@ const upload = multer({
 });
 
 const jobs = new Map();
+const providers = {
+  gpu: {
+    id: "gpu",
+    label: "GPU",
+    actualProvider: "openrouter",
+    apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+    apiHostLabel: "https://gpu.endpoint/v1/chat/completions",
+    model: openRouterModel,
+    publicModel: sanitizePublicModel(openRouterModel),
+    keyEnv: "OPENROUTER_API_KEY",
+    hasKey: () => Boolean(process.env.OPENROUTER_API_KEY)
+  },
+  cerebras: {
+    id: "cerebras",
+    label: "Cerebras",
+    actualProvider: "cerebras",
+    apiUrl: "https://api.cerebras.ai/v1/chat/completions",
+    apiHostLabel: "https://api.cerebras.ai/v1/chat/completions",
+    model: cerebrasModel,
+    publicModel: sanitizePublicModel(cerebrasModel),
+    keyEnv: "CEREBRAS_API_KEY",
+    hasKey: () => Boolean(process.env.CEREBRAS_API_KEY)
+  }
+};
+const providerOrder = ["gpu", "cerebras"];
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -43,14 +70,17 @@ app.use("/outputs", express.static(path.join(rootDir, "outputs")));
 app.use(express.static(distDir));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, model, hasKey: Boolean(process.env.CEREBRAS_API_KEY) });
+  res.json({
+    ok: true,
+    app: "car-damage",
+    providers: Object.fromEntries(providerOrder.map((id) => {
+      const provider = providers[id];
+      return [id, { label: provider.label, model: provider.publicModel, hasKey: provider.hasKey() }];
+    }))
+  });
 });
 
 app.post("/api/analyze", upload.single("video"), async (req, res) => {
-  if (!process.env.CEREBRAS_API_KEY) {
-    res.status(500).json({ error: "Missing CEREBRAS_API_KEY. Create .env or export it before starting the server." });
-    return;
-  }
   if (!req.file) {
     res.status(400).json({ error: "Upload a video file in the field named video." });
     return;
@@ -68,8 +98,22 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
     progress: 0,
     message: "Queued video inspection",
     createdAt: new Date().toISOString(),
-    settings: { sampleFps, maxFrames, confidenceFloor, frameConcurrency, tileConcurrency, model, extractionMaxWidth, extractionJpegQuality, extractionMode },
+    settings: {
+      sampleFps,
+      maxFrames,
+      confidenceFloor,
+      frameConcurrency,
+      tileConcurrency,
+      models: Object.fromEntries(providerOrder.map((id) => [id, providers[id].publicModel])),
+      extractionMaxWidth,
+      extractionJpegQuality,
+      extractionMode
+    },
     pipeline: buildPipeline(),
+    providerRuns: makeProviderRuns(),
+    events: [],
+    subscribers: new Set(),
+    inspectionStarted: false,
     result: null,
     error: null
   };
@@ -94,6 +138,11 @@ app.post("/api/jobs/:jobId/inspect", (req, res) => {
     res.status(409).json({ error: `Job is ${job.status}; it must be extracted before Gemma inspection can start.` });
     return;
   }
+  if (job.inspectionStarted) {
+    res.status(202).json({ jobId: job.id });
+    return;
+  }
+  job.inspectionStarted = true;
   res.status(202).json({ jobId: job.id });
   continueInspectionJob(job).catch((error) => {
     job.status = "failed";
@@ -103,13 +152,37 @@ app.post("/api/jobs/:jobId/inspect", (req, res) => {
   });
 });
 
+app.get("/api/jobs/:jobId/events", (req, res) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: "Unknown job" });
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+  res.write("\n");
+
+  const subscriber = (event) => writeSse(res, event);
+  job.subscribers.add(subscriber);
+  for (const event of job.events) subscriber(event);
+
+  req.on("close", () => {
+    job.subscribers.delete(subscriber);
+  });
+});
+
 app.get("/api/jobs/:jobId", (req, res) => {
   const job = jobs.get(req.params.jobId);
   if (!job) {
     res.status(404).json({ error: "Unknown job" });
     return;
   }
-  const { internal: _internal, ...publicJob } = job;
+  const { internal: _internal, subscribers: _subscribers, events: _events, ...publicJob } = job;
   res.json(publicJob);
 });
 
@@ -166,7 +239,7 @@ async function processExtractionJob(job, videoPath, originalName) {
 
   job.status = "extracted";
   job.progress = 18;
-  job.message = `Extracted ${frameFiles.length} frame${frameFiles.length === 1 ? "" : "s"}. Ready for Gemma inspection.`;
+  job.message = `Extracted ${frameFiles.length} frame${frameFiles.length === 1 ? "" : "s"}. Ready for side-by-side inspection.`;
   job.internal = { videoPath, originalName, jobTmp, jobOut, framesDir, frameFiles, extraction };
 }
 
@@ -177,103 +250,56 @@ async function continueInspectionJob(job) {
   }
 
   job.status = "inspecting";
-  const inspectionStartedAt = Date.now();
-  setPipelineStep(job, "inspect", "active", `0 of ${frameFiles.length} frames inspected`, { progress: 0 });
-  job.message = `Gemma is inspecting ${frameFiles.length} sampled frames with ${job.settings.frameConcurrency} parallel workers`;
-  const frameFindings = await mapWithConcurrency(
-    frameFiles,
-    job.settings.frameConcurrency,
-    async (filename, index) => {
-      const framePath = path.join(framesDir, filename);
-      const frameNumber = index + 1;
-      const findings = await inspectFrameWithGemma(framePath, frameNumber, frameFiles.length, job.settings.tileConcurrency);
-      return { frameNumber, filename, framePath, findings };
-    },
-    (completed, total) => {
-      const progress = completed / total;
-      setPipelineStep(job, "inspect", "active", `${completed} of ${total} frames inspected`, {
-        progress,
-        elapsedMs: Date.now() - inspectionStartedAt
-      });
-      job.progress = Math.round(18 + progress * 62);
-      job.message = `Inspected ${completed} of ${total} sampled frames`;
-    }
-  );
-  setPipelineStep(job, "inspect", "complete", `Inspected ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`, {
-    progress: 1,
-    elapsedMs: Date.now() - inspectionStartedAt
-  });
+  job.progress = 20;
+  job.message = `Running ${providerOrder.length} damage agents side by side`;
+  emitJobEvent(job, "trace", { provider: "system", phase: "start", message: `Starting comparison with ${frameFiles.length} extracted frame${frameFiles.length === 1 ? "" : "s"}` });
 
-  const dedupeStartedAt = Date.now();
-  setPipelineStep(job, "dedupe", "active", "Merging repeated sightings", { progress: 0 });
-  job.message = "Deduplicating visible damage";
-  job.progress = 84;
-  const detections = dedupeFindings(frameFindings, job.settings.confidenceFloor);
-  setPipelineStep(job, "dedupe", "complete", `${detections.length} unique damage candidate${detections.length === 1 ? "" : "s"}`, {
-    progress: 1,
-    elapsedMs: Date.now() - dedupeStartedAt
-  });
-
-  const annotationStartedAt = Date.now();
-  setPipelineStep(job, "annotate", "active", "Drawing evidence boxes", { progress: 0 });
-  job.message = "Drawing annotated evidence frames";
-  const annotated = [];
-  for (let i = 0; i < detections.length; i += 1) {
-    const detection = detections[i];
-    const frame = frameFindings.find((item) => item.frameNumber === detection.frameNumber);
-    if (!frame) continue;
-    const imageNumber = annotated.length + 1;
-    const outputName = `damage-${String(i + 1).padStart(2, "0")}-${slugify(detection.label)}.jpg`;
-    const outputPath = path.join(jobOut, outputName);
-    await annotateFrame(frame.framePath, outputPath, detection);
-    annotated.push({
-      ...detection,
-      imageNumber,
-      imageLabel: `Image ${imageNumber}`,
-      imageFilename: outputName,
-      imageUrl: `/outputs/jobs/${job.id}/${outputName}`
-    });
-    setPipelineStep(job, "annotate", "active", `${annotated.length} of ${detections.length} evidence images drawn`, {
-      progress: detections.length ? annotated.length / detections.length : 1,
-      elapsedMs: Date.now() - annotationStartedAt
-    });
-  }
-  setPipelineStep(job, "annotate", "complete", `${annotated.length} evidence image${annotated.length === 1 ? "" : "s"} ready`, {
-    progress: 1,
-    elapsedMs: Date.now() - annotationStartedAt
-  });
-
-  const reportStartedAt = Date.now();
-  setPipelineStep(job, "report", "active", "Writing report artifacts", { progress: 0 });
-  const report = buildDamageReport({
-    jobId: job.id,
+  const settledRuns = await Promise.allSettled(providerOrder.map((providerId) => runDamageProvider({
+    job,
+    provider: providers[providerId],
     originalName,
-    model,
-    settings: job.settings,
-    extraction,
-    sampledFrames: frameFiles.length,
-    detections: annotated
-  });
-  await writeFile(path.join(jobOut, "damage-report.json"), JSON.stringify(report, null, 2));
-  await writeFile(path.join(jobOut, "damage-report.md"), renderDamageReportMarkdown(report));
-  setPipelineStep(job, "report", "complete", "Report JSON and Markdown written", {
-    progress: 1,
-    elapsedMs: Date.now() - reportStartedAt
+    jobOut,
+    framesDir,
+    frameFiles,
+    extraction
+  })));
+  const providerResults = {};
+  settledRuns.forEach((settled, index) => {
+    const provider = providers[providerOrder[index]];
+    if (settled.status === "fulfilled") {
+      providerResults[provider.id] = settled.value;
+      return;
+    }
+    const message = settled.reason?.message || String(settled.reason);
+    providerResults[provider.id] = {
+      provider: provider.id,
+      label: provider.label,
+      model: provider.publicModel,
+      status: "failed",
+      error: sanitizeTraceText(message),
+      totalLatencyMs: null,
+      detections: [],
+      report: null,
+      rawFrameFindings: []
+    };
+    job.providerRuns[provider.id] = {
+      ...job.providerRuns[provider.id],
+      status: "failed",
+      error: sanitizeTraceText(message)
+    };
+    emitJobEvent(job, "error", { provider: provider.id, message });
+    emitJobEvent(job, "provider_done", providerResults[provider.id]);
   });
 
   const manifest = {
     jobId: job.id,
     originalName,
-    model,
     createdAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
     settings: job.settings,
     extraction,
     sampledFrames: frameFiles.length,
-    report,
-    reportUrl: `/outputs/jobs/${job.id}/damage-report.json`,
-    reportMarkdownUrl: `/outputs/jobs/${job.id}/damage-report.md`,
-    detections: annotated,
-    rawFrameFindings: frameFindings.map(({ frameNumber, filename, findings }) => ({ frameNumber, filename, findings }))
+    providers: providerResults
   };
   await writeFile(path.join(jobOut, "manifest.json"), JSON.stringify(manifest, null, 2));
   await rm(jobTmp, { recursive: true, force: true });
@@ -281,12 +307,164 @@ async function continueInspectionJob(job) {
 
   job.status = "complete";
   job.progress = 100;
-  job.message = annotated.length ? `Found ${annotated.length} unique damage candidate${annotated.length === 1 ? "" : "s"}` : "No visible damage candidates found";
+  const completedRuns = Object.values(providerResults).filter((result) => result.status === "complete");
+  const totalDetections = completedRuns.reduce((total, result) => total + (result.detections?.length || 0), 0);
+  job.message = completedRuns.length
+    ? `Comparison complete with ${totalDetections} total damage candidate${totalDetections === 1 ? "" : "s"}`
+    : "Comparison failed";
   job.result = { ...manifest, manifestUrl: `/outputs/jobs/${job.id}/manifest.json` };
   delete job.internal;
+  emitJobEvent(job, "run_done", { status: completedRuns.length ? "complete" : "failed", manifestUrl: job.result.manifestUrl, providers: providerResults });
 }
 
-function buildDamageReport({ jobId, originalName, model, settings, extraction, sampledFrames, detections }) {
+async function runDamageProvider({ job, provider, originalName, jobOut, framesDir, frameFiles, extraction }) {
+  const startedAt = performance.now();
+  const providerStartedAt = Date.now();
+  job.providerRuns[provider.id] = {
+    ...job.providerRuns[provider.id],
+    status: "running",
+    startedAt: new Date().toISOString(),
+    message: "Agent starting",
+    pipeline: buildProviderPipeline()
+  };
+
+  emitJobEvent(job, "trace", {
+    provider: provider.id,
+    phase: "boot",
+    message: `Agent online with model ${provider.publicModel}`
+  });
+  if (!provider.hasKey()) throw new Error(`Missing ${provider.keyEnv}.`);
+
+  setProviderStep(job, provider.id, "inspect", "active", `0 of ${frameFiles.length} frames inspected`, { progress: 0 });
+  emitJobEvent(job, "trace", {
+    provider: provider.id,
+    phase: "command",
+    message: renderDamageCurl(provider, frameFiles.length)
+  });
+  emitJobEvent(job, "trace", {
+    provider: provider.id,
+    phase: "dispatch",
+    message: `POST ${provider.apiHostLabel} with ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`
+  });
+
+  const frameFindings = await mapWithConcurrency(
+    frameFiles,
+    job.settings.frameConcurrency,
+    async (filename, index) => {
+      const framePath = path.join(framesDir, filename);
+      const frameNumber = index + 1;
+      const findings = await inspectFrameWithProvider(provider, framePath, frameNumber, frameFiles.length, job.settings.tileConcurrency);
+      return { frameNumber, filename, framePath, findings };
+    },
+    (completed, total) => {
+      const progress = completed / total;
+      setProviderStep(job, provider.id, "inspect", "active", `${completed} of ${total} frames inspected`, {
+        progress,
+        elapsedMs: Date.now() - providerStartedAt
+      });
+      updateComparisonProgress(job);
+      emitJobEvent(job, "partial_result", {
+        provider: provider.id,
+        completed,
+        total
+      });
+    }
+  );
+
+  setProviderStep(job, provider.id, "inspect", "complete", `Inspected ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`, {
+    progress: 1,
+    elapsedMs: Date.now() - providerStartedAt
+  });
+  emitJobEvent(job, "trace", {
+    provider: provider.id,
+    phase: "response",
+    message: `${frameFiles.length} frame${frameFiles.length === 1 ? "" : "s"} inspected in ${formatMs(Date.now() - providerStartedAt)}`
+  });
+
+  const dedupeStartedAt = Date.now();
+  setProviderStep(job, provider.id, "dedupe", "active", "Merging repeated sightings", { progress: 0 });
+  const detections = dedupeFindings(frameFindings, job.settings.confidenceFloor);
+  setProviderStep(job, provider.id, "dedupe", "complete", `${detections.length} unique damage candidate${detections.length === 1 ? "" : "s"}`, {
+    progress: 1,
+    elapsedMs: Date.now() - dedupeStartedAt
+  });
+
+  const annotationStartedAt = Date.now();
+  setProviderStep(job, provider.id, "annotate", "active", "Drawing evidence boxes", { progress: 0 });
+  const annotated = [];
+  const providerDir = path.join(jobOut, provider.id);
+  await mkdir(providerDir, { recursive: true });
+  for (let i = 0; i < detections.length; i += 1) {
+    const detection = detections[i];
+    const frame = frameFindings.find((item) => item.frameNumber === detection.frameNumber);
+    if (!frame) continue;
+    const imageNumber = annotated.length + 1;
+    const outputName = `damage-${String(i + 1).padStart(2, "0")}-${slugify(detection.label)}.jpg`;
+    const outputPath = path.join(providerDir, outputName);
+    await annotateFrame(frame.framePath, outputPath, detection);
+    annotated.push({
+      ...detection,
+      imageNumber,
+      imageLabel: `Image ${imageNumber}`,
+      imageFilename: outputName,
+      imageUrl: `/outputs/jobs/${job.id}/${provider.id}/${outputName}`
+    });
+    setProviderStep(job, provider.id, "annotate", "active", `${annotated.length} of ${detections.length} evidence images drawn`, {
+      progress: detections.length ? annotated.length / detections.length : 1,
+      elapsedMs: Date.now() - annotationStartedAt
+    });
+  }
+  setProviderStep(job, provider.id, "annotate", "complete", `${annotated.length} evidence image${annotated.length === 1 ? "" : "s"} ready`, {
+    progress: 1,
+    elapsedMs: Date.now() - annotationStartedAt
+  });
+
+  const reportStartedAt = Date.now();
+  setProviderStep(job, provider.id, "report", "active", "Writing report artifacts", { progress: 0 });
+  const report = buildDamageReport({
+    jobId: job.id,
+    originalName,
+    model: provider.publicModel,
+    provider: provider.label,
+    settings: job.settings,
+    extraction,
+    sampledFrames: frameFiles.length,
+    detections: annotated
+  });
+  const reportUrl = `/outputs/jobs/${job.id}/${provider.id}/damage-report.json`;
+  const reportMarkdownUrl = `/outputs/jobs/${job.id}/${provider.id}/damage-report.md`;
+  await writeFile(path.join(providerDir, "damage-report.json"), JSON.stringify(report, null, 2));
+  await writeFile(path.join(providerDir, "damage-report.md"), renderDamageReportMarkdown(report));
+  setProviderStep(job, provider.id, "report", "complete", "Report JSON and Markdown written", {
+    progress: 1,
+    elapsedMs: Date.now() - reportStartedAt
+  });
+
+  const totalLatencyMs = Math.round(performance.now() - startedAt);
+  const result = {
+    provider: provider.id,
+    label: provider.label,
+    model: provider.publicModel,
+    status: "complete",
+    totalLatencyMs,
+    detections: annotated,
+    report,
+    reportUrl,
+    reportMarkdownUrl,
+    rawFrameFindings: frameFindings.map(({ frameNumber, filename, findings }) => ({ frameNumber, filename, findings }))
+  };
+  job.providerRuns[provider.id] = {
+    ...job.providerRuns[provider.id],
+    status: "complete",
+    completedAt: new Date().toISOString(),
+    totalLatencyMs,
+    message: annotated.length ? `${annotated.length} evidence image${annotated.length === 1 ? "" : "s"} ready` : "No visible damage candidates"
+  };
+  emitJobEvent(job, "provider_done", result);
+  return result;
+}
+
+function buildDamageReport({ jobId, originalName, model, provider, settings, extraction, sampledFrames, detections }) {
   const items = detections.map((detection) => {
     const confidencePercent = Math.round(detection.confidence * 100);
     const vehiclePart = cleanVehiclePart(detection.location);
@@ -319,6 +497,7 @@ function buildDamageReport({ jobId, originalName, model, settings, extraction, s
     generatedAt: new Date().toISOString(),
     jobId,
     sourceVideo: originalName,
+    provider,
     model,
     settings,
     extraction,
@@ -376,6 +555,31 @@ function renderDamageReportMarkdown(report) {
   return `${lines.join("\n")}\n`;
 }
 
+function makeProviderRuns() {
+  return Object.fromEntries(providerOrder.map((id) => {
+    const provider = providers[id];
+    return [id, {
+      provider: id,
+      label: provider.label,
+      model: provider.publicModel,
+      status: "idle",
+      message: "Waiting for extracted frames",
+      pipeline: buildProviderPipeline(),
+      totalLatencyMs: null,
+      error: null
+    }];
+  }));
+}
+
+function buildProviderPipeline() {
+  return [
+    { key: "inspect", label: "Inspect frames", status: "pending", detail: "Waiting for run", progress: 0 },
+    { key: "dedupe", label: "Deduplicate", status: "pending", detail: "Waiting for findings", progress: 0 },
+    { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
+    { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }
+  ];
+}
+
 function buildPipeline() {
   return [
     { key: "upload", label: "Upload", status: "pending", detail: "Waiting for video", progress: 0 },
@@ -385,6 +589,38 @@ function buildPipeline() {
     { key: "annotate", label: "Annotate images", status: "pending", detail: "Waiting for damage list", progress: 0 },
     { key: "report", label: "Build report", status: "pending", detail: "Waiting for annotations", progress: 0 }
   ];
+}
+
+function setProviderStep(job, providerId, key, status, detail, extra = {}) {
+  const current = job.providerRuns?.[providerId] || makeProviderRuns()[providerId];
+  const pipeline = Array.isArray(current.pipeline) ? current.pipeline : buildProviderPipeline();
+  const index = pipeline.findIndex((step) => step.key === key);
+  if (index === -1) return;
+  const now = new Date().toISOString();
+  const existing = pipeline[index];
+  pipeline[index] = {
+    ...existing,
+    ...extra,
+    status,
+    detail,
+    startedAt: existing.startedAt || (status === "active" ? now : undefined),
+    completedAt: status === "complete" ? now : existing.completedAt
+  };
+  job.providerRuns[providerId] = {
+    ...current,
+    status: status === "failed" ? "failed" : current.status,
+    message: detail,
+    pipeline
+  };
+}
+
+function updateComparisonProgress(job) {
+  const runs = Object.values(job.providerRuns || {});
+  const progressValues = runs.flatMap((run) => (run.pipeline || []).map((step) => Number(step.progress || 0)));
+  const averageProgress = progressValues.length ? progressValues.reduce((total, value) => total + value, 0) / progressValues.length : 0;
+  job.progress = Math.max(20, Math.min(98, Math.round(20 + averageProgress * 76)));
+  const running = runs.filter((run) => run.status === "running").length;
+  job.message = running ? `Running ${running} damage agent${running === 1 ? "" : "s"}` : job.message;
 }
 
 function setPipelineStep(job, key, status, detail, extra = {}) {
@@ -402,6 +638,61 @@ function setPipelineStep(job, key, status, detail, extra = {}) {
     completedAt: status === "complete" ? now : existing.completedAt
   };
   job.pipeline = pipeline;
+}
+
+function emitJobEvent(job, type, payload) {
+  const event = {
+    type,
+    at: new Date().toISOString(),
+    ...payload
+  };
+  const sanitized = sanitizeEvent(event);
+  job.events.push(sanitized);
+  for (const subscriber of job.subscribers || []) subscriber(sanitized);
+}
+
+function writeSse(res, event) {
+  res.write(`event: ${event.type}\n`);
+  res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+function sanitizeEvent(event) {
+  const sanitized = { ...event };
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (typeof value === "string") sanitized[key] = sanitizeTraceText(value);
+  }
+  if (sanitized.model) sanitized.model = sanitizePublicModel(sanitized.model);
+  return sanitized;
+}
+
+function sanitizeTraceText(value) {
+  return String(value || "")
+    .replaceAll("OpenRouter", "GPU")
+    .replaceAll("openrouter", "gpu")
+    .replaceAll("api.openrouter.ai", "gpu.endpoint")
+    .replaceAll("$OPENROUTER_API_KEY", "$GPU_API_KEY")
+    .replace(/:free\b/gi, "")
+    .replace(/\bfree\b/gi, "standard");
+}
+
+function sanitizePublicModel(value) {
+  return String(value || "").replace(/:free\b/gi, "");
+}
+
+function renderDamageCurl(provider, frameCount) {
+  const keyLabel = provider.id === "gpu" ? "$GPU_API_KEY" : `$${provider.keyEnv}`;
+  return sanitizeTraceText([
+    `curl -s ${provider.apiHostLabel} \\`,
+    `  -H "Authorization: Bearer ${keyLabel}" \\`,
+    `  -H "Content-Type: application/json" \\`,
+    `  -d '{"model":"${provider.publicModel}","messages":[{"role":"user","content":[${frameCount} sampled image_url parts, {"type":"text","text":"damage inspection prompt"}]}]}'`
+  ].join("\n"));
+}
+
+function formatMs(ms) {
+  if (!Number.isFinite(ms)) return "";
+  if (ms < 1000) return `${Math.max(1, Math.round(ms))}ms`;
+  return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
 }
 
 function failActivePipelineStep(job, error) {
@@ -645,7 +936,7 @@ function probeDuration(videoPath) {
   });
 }
 
-async function inspectFrameWithGemma(framePath, frameNumber, totalFrames, tileConcurrency) {
+async function inspectFrameWithProvider(provider, framePath, frameNumber, totalFrames, tileConcurrency) {
   const base64 = await readFile(framePath, "base64");
   const metadata = await sharp(framePath).metadata();
   const imageWidth = metadata.width || 1920;
@@ -687,16 +978,16 @@ Every detection must include a bbox that tightly localizes the damage. If you ca
 
 Frame ${frameNumber} of ${totalFrames}.`;
 
-  const generalDetections = await inspectImageWithPrompt(base64, generalPrompt, 900);
+  const generalDetections = await inspectImageWithPrompt(provider, base64, generalPrompt, 900);
   const panelDetections = generalDetections.length
-    ? await inspectPanelTiles(framePath, imageWidth, imageHeight, frameNumber, totalFrames, tileConcurrency)
+    ? await inspectPanelTiles(provider, framePath, imageWidth, imageHeight, frameNumber, totalFrames, tileConcurrency)
     : [];
   return [...generalDetections, ...panelDetections]
     .map((detection) => normalizeDetection(detection, imageWidth, imageHeight))
     .filter(Boolean);
 }
 
-async function inspectPanelTiles(framePath, imageWidth, imageHeight, frameNumber, totalFrames, tileConcurrency) {
+async function inspectPanelTiles(provider, framePath, imageWidth, imageHeight, frameNumber, totalFrames, tileConcurrency) {
   const tilePrompt = `Inspect this crop from a rental-car walkaround frame. Find visible exterior damage in this crop.
 
 Pay special attention to subtle dents: small circular depressions, warped highlight bands, concave dimples, crescent shadows, bent reflection lines, and distorted reflections on otherwise smooth silver or glossy panels. Also report scratches and scuffs separately.
@@ -729,15 +1020,15 @@ Frame ${frameNumber} of ${totalFrames}.`;
       .jpeg({ quality: 92 })
       .toBuffer();
     const tileBase64 = buffer.toString("base64");
-    const tileDetections = await inspectImageWithPrompt(tileBase64, tilePrompt, 800);
+    const tileDetections = await inspectImageWithPrompt(provider, tileBase64, tilePrompt, 800);
     return tileDetections.map((detection) => mapTileDetectionToFrame(detection, tile, imageWidth, imageHeight));
   });
   return tileResults.flat();
 }
 
-async function inspectImageWithPrompt(base64, prompt, maxCompletionTokens) {
+async function inspectImageWithPrompt(provider, base64, prompt, maxCompletionTokens) {
   const payload = {
-    model,
+    model: provider.model,
     messages: [
       {
         role: "user",
@@ -747,25 +1038,33 @@ async function inspectImageWithPrompt(base64, prompt, maxCompletionTokens) {
         ]
       }
     ],
-    max_completion_tokens: maxCompletionTokens,
     temperature: 0,
     response_format: { type: "json_object" }
   };
+  if (provider.actualProvider === "openrouter") {
+    payload.max_tokens = maxCompletionTokens;
+  } else {
+    payload.max_completion_tokens = maxCompletionTokens;
+  }
 
-  const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+  const response = await fetch(provider.apiUrl, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.CEREBRAS_API_KEY}`,
+      Authorization: `Bearer ${process.env[provider.keyEnv]}`,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "damage-scout-demo/0.1"
+      "User-Agent": "damage-scout-demo/0.1",
+      ...(provider.actualProvider === "openrouter" ? {
+        "HTTP-Referer": "http://127.0.0.1:5173",
+        "X-Title": "Damage Scout"
+      } : {})
     },
     body: JSON.stringify(payload)
   });
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`Cerebras API ${response.status}: ${body.message || JSON.stringify(body)}`);
+    throw new Error(`${provider.label} API ${response.status}: ${body.message || JSON.stringify(body)}`);
   }
 
   const content = body.choices?.[0]?.message?.content || "{}";
