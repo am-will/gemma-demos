@@ -29,7 +29,7 @@ const ffmpegHwaccel = process.env.FFMPEG_HWACCEL || (process.platform === "darwi
 const extractionMode = process.env.FRAME_EXTRACTION_MODE || "sparse-sharp";
 const extractionSeekWorkers = clampInteger(process.env.FRAME_EXTRACTION_SEEK_WORKERS, 1, 8, 4);
 const extractionBlurThreshold = Number(process.env.FRAME_EXTRACTION_BLUR_THRESHOLD || 85);
-const frameBatchSize = clampInteger(process.env.FRAME_INSPECTION_BATCH_SIZE || process.env.GPU_BATCH_SIZE, 1, 8, 4);
+const frameBatchSize = clampInteger(process.env.FRAME_INSPECTION_BATCH_SIZE || process.env.GPU_BATCH_SIZE, 1, 8, 3);
 
 await Promise.all([mkdir(uploadsDir, { recursive: true }), mkdir(tmpDir, { recursive: true }), mkdir(outputsDir, { recursive: true })]);
 
@@ -686,7 +686,7 @@ function sanitizePublicModel(value) {
 
 function renderDamageCurl(provider, frameCount) {
   const keyLabel = provider.id === "gpu" ? "$GPU_API_KEY" : `$${provider.keyEnv}`;
-  const imageSummary = `${frameCount} sampled single-frame image_url requests in batches of ${frameBatchSize}`;
+  const imageSummary = `${frameCount} sampled image_url parts in multimodal batches of ${frameBatchSize}`;
   return sanitizeTraceText([
     `curl -s ${provider.apiHostLabel} \\`,
     `  -H "Authorization: Bearer ${keyLabel}" \\`,
@@ -1032,41 +1032,164 @@ Frame ${frameNumber} of ${totalFrames}.`;
   return tileResults.flat();
 }
 
-async function inspectFramesWithBatches(provider, frameFiles, framesDir, tileConcurrency, onProgress, emit) {
+async function inspectFramesWithBatches(provider, frameFiles, framesDir, _tileConcurrency, onProgress, emit) {
   const batches = chunkArray(frameFiles, frameBatchSize);
   const frameFindings = [];
   let completed = 0;
   emit("trace", {
     provider: provider.id,
     phase: "batch",
-    message: `${provider.label} will inspect ${frameFiles.length} frames as ${batches.length} single-frame request batch${batches.length === 1 ? "" : "es"} of up to ${frameBatchSize}`
+    message: `${provider.label} will inspect ${frameFiles.length} frames in ${batches.length} multimodal batch${batches.length === 1 ? "" : "es"} of up to ${frameBatchSize}`
   });
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
     const batchFiles = batches[batchIndex];
+    const frames = await Promise.all(batchFiles.map(async (filename) => {
+      const frameNumber = frameFiles.indexOf(filename) + 1;
+      const framePath = path.join(framesDir, filename);
+      const [base64, metadata] = await Promise.all([
+        readFile(framePath, "base64"),
+        sharp(framePath).metadata()
+      ]);
+      return {
+        frameNumber,
+        filename,
+        framePath,
+        base64,
+        imageWidth: metadata.width || 1920,
+        imageHeight: metadata.height || 1080
+      };
+    }));
+
     emit("trace", {
       provider: provider.id,
       phase: "dispatch",
-      message: `POST ${provider.apiHostLabel} batch ${batchIndex + 1}/${batches.length} with ${batchFiles.length} single-frame request${batchFiles.length === 1 ? "" : "s"}`
+      message: `POST ${provider.apiHostLabel} batch ${batchIndex + 1}/${batches.length} with ${frames.length} frames`
     });
-    const batchResults = await mapWithConcurrency(
-      batchFiles,
-      batchFiles.length,
-      async (filename) => {
-        const framePath = path.join(framesDir, filename);
-        const frameNumber = frameFiles.indexOf(filename) + 1;
-        const findings = await inspectFrameWithProvider(provider, framePath, frameNumber, frameFiles.length, tileConcurrency);
-        return { frameNumber, filename, framePath, findings };
-      },
-      () => {
-        completed += 1;
-        onProgress(completed, frameFiles.length);
-      }
-    );
+    const batchResults = await inspectFrameBatchWithProvider(provider, frames, batchIndex + 1, batches.length, frameFiles.length);
     frameFindings.push(...batchResults);
+    completed += frames.length;
+    onProgress(completed, frameFiles.length);
   }
 
   return frameFindings.sort((a, b) => a.frameNumber - b.frameNumber);
+}
+
+async function inspectFrameBatchWithProvider(provider, frames, batchNumber, batchCount, totalFrames) {
+  const prompt = buildBatchDamagePrompt(frames, batchNumber, batchCount, totalFrames);
+  const payload = {
+    model: provider.model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          ...frames.flatMap((frame) => [
+            { type: "text", text: `Frame ${frame.frameNumber} filename: ${frame.filename}` },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${frame.base64}` } }
+          ])
+        ]
+      }
+    ],
+    temperature: 0,
+    response_format: { type: "json_object" }
+  };
+  const maxCompletionTokens = Math.max(1800, frames.length * 1200);
+  if (provider.actualProvider === "openrouter") {
+    payload.max_tokens = maxCompletionTokens;
+  } else {
+    payload.max_completion_tokens = maxCompletionTokens;
+  }
+
+  const response = await fetch(provider.apiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env[provider.keyEnv]}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "damage-scout-demo/0.1",
+      ...(provider.actualProvider === "openrouter" ? {
+        "HTTP-Referer": "http://127.0.0.1:5173",
+        "X-Title": "Damage Scout"
+      } : {})
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(formatProviderError(provider, response.status, body));
+  }
+
+  const content = body.choices?.[0]?.message?.content || "{}";
+  const parsed = parseJsonContent(content);
+  const byFrame = collectBatchFrameDetections(parsed, frames);
+
+  return frames.map((frame) => ({
+    frameNumber: frame.frameNumber,
+    filename: frame.filename,
+    framePath: frame.framePath,
+    findings: (byFrame.get(frame.frameNumber) || [])
+      .map((detection) => normalizeDetection(detection, frame.imageWidth, frame.imageHeight))
+      .filter(Boolean)
+  }));
+}
+
+function buildBatchDamagePrompt(frames, batchNumber, batchCount, totalFrames) {
+  const frameList = frames.map((frame) => `- Frame ${frame.frameNumber}: ${frame.filename}`).join("\n");
+  const frameNumberList = frames.map((frame) => frame.frameNumber).join(", ");
+  return `You are inspecting rental-car walkaround video frames before a renter takes possession.
+
+Find visible exterior vehicle damage in EACH frame independently. Prioritize small surface damage too, not just dents.
+
+Damage examples to actively look for:
+- scratches: thin bright/dark lines, clearcoat scratches, keyed marks, swirl clusters, scraped paint
+- scuffs and paint transfer: bumper rubs, white/black transfer marks, cloudy abrasion, scraped corners
+- chips and cracks: paint chips, windshield chips, cracked lights, hairline cracks in plastic trim
+- deformation: dents, creases, bent panels, panel gaps, broken mirror, missing trim, wheel rash, rust
+
+Rules:
+- Return JSON only. No markdown. No prose.
+- Return exactly one top-level object with a "frames" array.
+- The "frames" array MUST contain exactly ${frames.length} frame objects, one for every listed frame, in the same order.
+- Required frame_number sequence: [${frameNumberList}].
+- Every frame object MUST have exactly one frame_number field and one detections array.
+- Never merge two frame objects together. Never repeat frame_number inside the same object.
+- Treat each frame independently. Do not copy detections from one frame to another.
+- Enumerate every distinct damage item visible in each frame. Do not limit yourself to one detection per frame.
+- If a frame has multiple defects, return multiple detections for that frame.
+- Do not stop after the most obvious mark. Check wheel arches, quarter panels, fenders, doors, bumpers, mirror-adjacent panels, rocker panels, lights, and wheels.
+- Do not merge a dent and nearby scratches into one detection. If a dent sits near scratches or scuffs, return separate boxes.
+- Use lower confidence for uncertain scratches instead of suppressing them.
+- Reject reflections, shadows, dirt, water streaks, normal body seams, license plate text, and camera motion blur unless there is a clear damage cue.
+- Subtle dent cues matter: small circular depressions, soft concave dimples, warped highlight bands, crescent shadows, bent reflection lines, and local panel deformation on otherwise smooth silver or glossy panels.
+- Coordinates MUST be normalized decimals from 0 to 1 relative to that frame.
+- Every detection must include a tight bbox. For long scratches, cover the full scratch path even if it is thin.
+- If there is no visible damage in a frame, return that frame with an empty detections array.
+
+Batch ${batchNumber} of ${batchCount}. Total sampled frames: ${totalFrames}.
+Frames in this batch:
+${frameList}
+
+Return this exact JSON shape:
+{
+  "frames": [
+    {
+      "frame_number": ${frames[0]?.frameNumber || 1},
+      "detections": [
+        {
+          "label": "short damage label",
+          "damage_type": "scratch|scuff|dent|chip|crack|paint_transfer|wheel_rash|rust|broken_part|other",
+          "confidence": 0.0,
+          "severity": "minor|moderate|major",
+          "location": "front bumper / driver door / rear quarter / etc",
+          "bbox": { "x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0 },
+          "evidence": "why this looks damaged"
+        }
+      ]
+    }
+  ]
+}`;
 }
 
 async function inspectImageWithPrompt(provider, base64, prompt, maxCompletionTokens) {
@@ -1175,18 +1298,53 @@ function formatProviderError(provider, status, body, context = "request") {
 }
 
 function parseJsonContent(content) {
-  const stripped = content.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "");
-  try {
-    return JSON.parse(stripped);
-  } catch {
-    const match = stripped.match(/\{[\s\S]*\}/);
-    if (!match) return {};
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return {};
-    }
+  const stripped = String(content || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "");
+  const direct = tryParseJson(stripped);
+  if (direct !== null) return direct;
+
+  const arrayStart = stripped.indexOf("[");
+  const arrayEnd = stripped.lastIndexOf("]");
+  if (arrayStart !== -1 && arrayEnd > arrayStart) {
+    const parsedArray = tryParseJson(stripped.slice(arrayStart, arrayEnd + 1));
+    if (parsedArray !== null) return parsedArray;
   }
+
+  const objectStart = stripped.indexOf("{");
+  const objectEnd = stripped.lastIndexOf("}");
+  if (objectStart !== -1 && objectEnd > objectStart) {
+    const parsedObject = tryParseJson(stripped.slice(objectStart, objectEnd + 1));
+    if (parsedObject !== null) return parsedObject;
+  }
+
+  return {};
+}
+
+function tryParseJson(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function collectBatchFrameDetections(parsed, frames) {
+  const byFrame = new Map(frames.map((frame) => [frame.frameNumber, []]));
+  const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.frames) ? parsed.frames : [];
+
+  if (!items.length && Array.isArray(parsed?.detections) && frames.length === 1) {
+    byFrame.set(frames[0].frameNumber, parsed.detections);
+    return byFrame;
+  }
+
+  items.forEach((item, index) => {
+    if (!item || typeof item !== "object") return;
+    const fallbackFrameNumber = frames[index]?.frameNumber;
+    const frameNumber = Number(item.frame_number || item.frameNumber || fallbackFrameNumber);
+    if (!byFrame.has(frameNumber)) return;
+    byFrame.set(frameNumber, Array.isArray(item.detections) ? item.detections : []);
+  });
+
+  return byFrame;
 }
 
 function buildTiles(imageWidth, imageHeight) {
