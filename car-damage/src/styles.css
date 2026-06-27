@@ -114,17 +114,19 @@ h1 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
+  width: min(100%, 31rem);
+  justify-self: center;
   padding: 1rem;
   background: var(--panel);
   border: 2px solid var(--line);
   border-radius: 1.35rem;
 }
 
-.picker-field,
-.settings-field {
+.picker-field {
   display: grid;
   gap: 0.55rem;
   min-width: 0;
+  width: 100%;
 }
 
 .field-label {
@@ -217,46 +219,11 @@ h1 {
   clip: rect(0 0 0 0);
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.45rem;
-}
-
-label {
-  display: grid;
-  gap: 0.38rem;
-  min-width: 0;
-}
-
-label > span {
-  color: var(--line);
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-input {
-  width: 100%;
-  min-height: 3.15rem;
-  padding: 0 0.7rem;
-  color: var(--line);
-  background: #ffffff;
-  border: 2px solid var(--line);
-  border-radius: 0.65rem;
-  outline: none;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-input:focus {
-  border-color: var(--cerebras);
-}
-
 .primary-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   min-height: 4.25rem;
   padding: 0.9rem 1.4rem;
   cursor: pointer;
@@ -266,6 +233,11 @@ input:focus {
   border-radius: 999px;
   font-size: clamp(1rem, 1.5vw, 1.45rem);
   font-weight: 700;
+}
+
+.primary-button.ready {
+  background: var(--cerebras);
+  box-shadow: 0 0 0 0.25rem rgba(241, 90, 41, 0.14), 0 0 1.25rem rgba(241, 90, 41, 0.28);
 }
 
 .primary-button:disabled {
@@ -296,46 +268,6 @@ input:focus {
   grid-column: 1 / -1;
   gap: 0.5rem;
   align-items: center;
-}
-
-.prep-strip {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  align-items: center;
-  margin-top: 1rem;
-  color: var(--line);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.prep-meter {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.7rem;
-  align-items: center;
-  min-height: 2.65rem;
-  padding: 0.4rem 0.75rem;
-  overflow: hidden;
-  background: #ffffff;
-  border: 2px solid var(--line);
-  border-radius: 999px;
-}
-
-.prep-meter span,
-.prep-meter strong {
-  position: relative;
-  z-index: 1;
-}
-
-.prep-meter i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  display: block;
-  width: 0;
-  background: rgba(241, 90, 41, 0.25);
-  transition: width 220ms ease;
 }
 
 .agents-grid {
@@ -542,10 +474,7 @@ input:focus {
 }
 
 .results-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  display: block;
 }
 
 .results-box h3 {
@@ -556,21 +485,6 @@ input:focus {
 
 .agent-card.cerebras .results-box h3 {
   color: var(--cerebras);
-}
-
-.results-heading span {
-  color: #ffffff;
-  background: var(--gpu);
-  border-radius: 999px;
-  padding: 0.24rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.agent-card.cerebras .results-heading span {
-  background: var(--cerebras);
 }
 
 .empty-state,
@@ -796,17 +710,14 @@ input:focus {
   }
 
   .control-card {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    justify-self: end;
     padding: 1.4rem 1.7rem 0.85rem;
     border-radius: 1.9rem;
   }
 
   .primary-button {
-    grid-column: 1 / -1;
-  }
-
-  .prep-strip {
-    grid-template-columns: minmax(18rem, 0.35fr) 1fr;
+    grid-column: auto;
   }
 
   .agents-grid {
@@ -830,10 +741,6 @@ input:focus {
   }
 
   .trace-line {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-grid {
     grid-template-columns: 1fr;
   }
 

@@ -84,7 +84,6 @@ function App() {
   const uploadingOrExtracting = job && ["uploading", "queued", "processing"].includes(job.status);
   const inspecting = job?.status === "inspecting";
   const canRun = Boolean(jobId && extractionReady && !inspecting);
-  const frameCount = job?.internalFrameCount || job?.settings?.maxFrames || settings.maxFrames;
 
   async function startExtraction(selectedFile = file) {
     if (!selectedFile || uploadingOrExtracting || inspecting) return;
@@ -217,29 +216,11 @@ function App() {
             <input ref={inputRef} id="video-input" className="hidden-input" type="file" accept="video/*" onChange={handleFileChange} />
           </div>
 
-          <div className="settings-field">
-            <label className="field-label">FRAME PREP</label>
-            <div className="settings-grid">
-              <NumberField label="FPS" min="0.2" max="3" step="0.2" value={settings.sampleFps} onChange={(value) => setSettings({ ...settings, sampleFps: value })} />
-              <NumberField label="Frames" min="1" max="80" value={settings.maxFrames} onChange={(value) => setSettings({ ...settings, maxFrames: value })} />
-              <NumberField label="Confidence" min="0" max="1" step="0.05" value={settings.confidenceFloor} onChange={(value) => setSettings({ ...settings, confidenceFloor: value })} />
-            </div>
-          </div>
-
-          <button className="primary-button" disabled={!canRun} onClick={startInspection} type="button">
-            {inspecting ? "Running comparison" : extractionReady ? "Run damage comparison" : uploadingOrExtracting ? "Extracting frames" : "Upload video first"}
+          <button className={`primary-button ${extractionReady ? "ready" : ""}`} disabled={!canRun} onClick={startInspection} type="button">
+            {inspecting ? "Checking for damage" : extractionReady ? "Check for damage" : uploadingOrExtracting ? "Preparing frames" : "Upload video first"}
           </button>
           {error ? <div className="error-pill"><AlertTriangle size={16} /> {error}</div> : null}
         </div>
-      </section>
-
-      <section className="prep-strip">
-        <div className="prep-meter">
-          <span>{job?.status || "idle"}</span>
-          <strong>{job?.progress || 0}%</strong>
-          <i style={{ width: `${job?.progress || 0}%` }} />
-        </div>
-        <p>{extractionReady ? "Frames are ready. Run will go straight to the AI model calls." : `Preparing up to ${frameCount} sampled frames before comparison.`}</p>
       </section>
 
       <section className="agents-grid">
@@ -271,7 +252,6 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
   const isWinner = winnerProvider === provider;
   const isLoser = Boolean(winnerProvider && finished && !isWinner);
   const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
-  const status = result?.status || runState?.status || (running ? "running" : "idle");
   const [celebrate, setCelebrate] = useState(false);
 
   useEffect(() => {
@@ -301,7 +281,6 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
       <div className="results-box">
         <div className="results-heading">
           <h3>{totalDetections} Evidence Frame{totalDetections === 1 ? "" : "s"}</h3>
-          <span>{status}</span>
         </div>
         {result?.error ? <div className="panel-error">{sanitizeTraceText(result.error)}</div> : null}
         {!result?.error && !detections.length ? (
@@ -366,15 +345,6 @@ function TraceWindow({ events }) {
         </div>
       )) : <div className="trace-placeholder">Waiting for agent trace...</div>}
     </div>
-  );
-}
-
-function NumberField({ label, value, onChange, ...props }) {
-  return (
-    <label>
-      <span>{label}</span>
-      <input type="number" value={value} onChange={(event) => onChange(event.target.value)} {...props} />
-    </label>
   );
 }
 
