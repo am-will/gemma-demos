@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   CircleAlert,
@@ -14,12 +14,76 @@ const PROVIDERS = {
 };
 const PANEL_PROVIDERS = ["cerebras", "gemini"];
 
+// Confetti palette chosen to read across the card's three zones:
+// the orange header, the dark terminal trace, and the white results box.
+const CONFETTI_COLORS = ["#ffffff", "#ffd23f", "#5ce6a5", "#36c5ff", "#ff5fa2", "#bb8bff", "#fff0bf"];
+const CONFETTI_SHAPES = ["rect", "rect", "rect", "circle", "ribbon"];
+
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+// One radial pop: pieces shoot out from a single point in every direction,
+// then fall with gravity and tumble. `baseDelay` staggers the three explosions.
+function createBurstPieces(baseDelay) {
+  const count = 14 + Math.floor(Math.random() * 5);
+  return Array.from({ length: count }, (_, id) => {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 2.6 + Math.random() * 5;
+    const burstX = Math.cos(angle) * distance;
+    const burstY = Math.sin(angle) * distance - 1.2;
+    const fallX = burstX + (Math.random() - 0.5) * 2.5;
+    const fallY = burstY + 6 + Math.random() * 9;
+    const spin = (Math.random() < 0.5 ? -1 : 1) * (220 + Math.random() * 560);
+    const size = 0.38 + Math.random() * 0.4;
+    return {
+      id,
+      shape: pick(CONFETTI_SHAPES),
+      color: pick(CONFETTI_COLORS),
+      style: {
+        "--bx": `${burstX.toFixed(2)}rem`,
+        "--by": `${burstY.toFixed(2)}rem`,
+        "--fx": `${fallX.toFixed(2)}rem`,
+        "--fy": `${fallY.toFixed(2)}rem`,
+        "--spin": `${Math.round(spin)}deg`,
+        "--size": `${size.toFixed(2)}rem`,
+        "--delay": `${baseDelay + Math.round(Math.random() * 70)}ms`,
+        "--dur": `${Math.round(1100 + Math.random() * 650)}ms`,
+        "--flutter": `${Math.round(320 + Math.random() * 500)}ms`
+      }
+    };
+  });
+}
+
+// Zones spread across the whole card (top row + bottom row over the matched
+// images) so the explosions cover the full container instead of clustering.
+const BURST_ZONES = [
+  { x: [10, 34], y: [10, 30] },
+  { x: [40, 62], y: [8, 26] },
+  { x: [66, 90], y: [12, 32] },
+  { x: [12, 36], y: [54, 80] },
+  { x: [42, 64], y: [58, 84] },
+  { x: [66, 90], y: [52, 78] }
+];
+
+const inZone = ([min, max]) => min + Math.random() * (max - min);
+
+// One explosion per zone, fired in quick succession. Regenerated on every
+// celebration (positions + pieces) so it never looks canned.
+function createBursts() {
+  return BURST_ZONES.map((zone, id) => ({
+    id,
+    left: `${inZone(zone.x).toFixed(1)}%`,
+    top: `${inZone(zone.y).toFixed(1)}%`,
+    pieces: createBurstPieces(id * 95 + Math.round(Math.random() * 70))
+  }));
+}
+
 function App() {
   const [health, setHealth] = useState(null);
   const selectedFilesRef = useRef([]);
   const previewUrlsRef = useRef([]);
   const [fileSummary, setFileSummary] = useState({ count: 0, folderName: "", previews: [] });
-  const [description, setDescription] = useState("Food");
+  const [folderDragActive, setFolderDragActive] = useState(false);
+  const [description, setDescription] = useState("");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -44,22 +108,45 @@ function App() {
     return () => window.clearInterval(timer);
   }, [running]);
 
-  function handleFolderChange(event) {
+  function applySelectedFiles(files) {
     setError("");
     revokePreviewUrls();
-    const selected = Array.from(event.target.files || []).filter(isImageFile);
+    const selected = files.filter(isImageFile);
     selectedFilesRef.current = selected;
-    const folderName = selected[0]?.webkitRelativePath?.split("/")?.[0] || "Selected images";
     const previews = selected.slice(0, 36).map((file) => {
       const url = URL.createObjectURL(file);
       previewUrlsRef.current.push(url);
       return {
-        name: file.webkitRelativePath || file.name,
+        name: file.webkitRelativePath || file.relativePath || file.name,
         url
       };
     });
-    setFileSummary({ count: selected.length, folderName, previews });
+    setFileSummary({ count: selected.length, folderName: "", previews });
     if (!selected.length) setError("That folder did not include browser-readable image files.");
+  }
+
+  function handleFolderChange(event) {
+    applySelectedFiles(Array.from(event.target.files || []));
+  }
+
+  function handleFolderDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setFolderDragActive(true);
+  }
+
+  function handleFolderDragLeave(event) {
+    if (!event.currentTarget.contains(event.relatedTarget)) setFolderDragActive(false);
+  }
+
+  async function handleFolderDrop(event) {
+    event.preventDefault();
+    setFolderDragActive(false);
+    try {
+      applySelectedFiles(await getDroppedFiles(event.dataTransfer));
+    } catch (err) {
+      setError(err.message || "Could not read the dropped folder.");
+    }
   }
 
   function revokePreviewUrls() {
@@ -94,7 +181,7 @@ function App() {
       const form = new FormData();
       form.append("description", description);
       form.append("leftProvider", leftProvider);
-      for (const file of selectedFilesRef.current) form.append("images", file, file.webkitRelativePath || file.name);
+      for (const file of selectedFilesRef.current) form.append("images", file, file.webkitRelativePath || file.relativePath || file.name);
       const response = await fetch("/api/runs", { method: "POST", body: form });
       const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -133,7 +220,6 @@ function App() {
   }
 
   const imageCount = fileSummary.count;
-  const folderName = fileSummary.folderName || "Selected images";
   const canStart = imageCount > 0 && description.trim() && !running;
 
   return (
@@ -147,10 +233,15 @@ function App() {
         <div className="control-card">
           <div className="picker-field">
             <label className="field-label" htmlFor="folder-input">IMAGE FOLDER</label>
-            <label className="folder-drop" htmlFor="folder-input">
+            <label
+              className={`folder-drop ${imageCount ? "loaded" : "empty"} ${folderDragActive ? "drag-active" : ""}`}
+              htmlFor="folder-input"
+              onDragOver={handleFolderDragOver}
+              onDragLeave={handleFolderDragLeave}
+              onDrop={handleFolderDrop}
+            >
               <FolderOpen size={30} />
-              <span>{imageCount ? folderName : "coco"}</span>
-              <strong>{imageCount ? `${imageCount} images ready` : "30 images ready"}</strong>
+              {imageCount ? <strong>{imageCount} images</strong> : null}
             </label>
             <input
               id="folder-input"
@@ -169,7 +260,7 @@ function App() {
               id="description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Food"
+              placeholder="Prompt"
             />
           </div>
 
@@ -208,6 +299,39 @@ function isImageFile(file) {
   return /\.(avif|gif|jpe?g|png|webp)$/i.test(file.name || "");
 }
 
+async function getDroppedFiles(dataTransfer) {
+  const entries = Array.from(dataTransfer.items || [])
+    .map((item) => item.webkitGetAsEntry?.())
+    .filter(Boolean);
+
+  if (!entries.length) return Array.from(dataTransfer.files || []);
+
+  const files = [];
+  await Promise.all(entries.map((entry) => readDroppedEntry(entry, "", files)));
+  return files;
+}
+
+async function readDroppedEntry(entry, path, files) {
+  if (entry.isFile) {
+    const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+    try {
+      Object.defineProperty(file, "relativePath", { value: `${path}${file.name}` });
+    } catch {
+      file.relativePath = `${path}${file.name}`;
+    }
+    files.push(file);
+    return;
+  }
+
+  if (!entry.isDirectory) return;
+  const reader = entry.createReader();
+  let batch = [];
+  do {
+    batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+    await Promise.all(batch.map((child) => readDroppedEntry(child, `${path}${entry.name}/`, files)));
+  } while (batch.length);
+}
+
 async function readJsonResponse(response) {
   const text = await response.text();
   if (!text.trim()) {
@@ -234,10 +358,26 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
   const finished = Boolean(result?.totalLatencyMs);
   const isWinner = winnerProvider === provider;
   const isLoser = Boolean(winnerProvider && finished && !isWinner);
+  const isCerebras = provider === "cerebras";
   const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
 
+  // The Cerebras panel celebrates the moment its timer lands. We mount the
+  // overlay only for the duration of the animation so nothing keeps spinning
+  // off-screen, and it re-fires fresh on every new run.
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!isCerebras || !finished) {
+      setCelebrate(false);
+      return undefined;
+    }
+    setCelebrate(true);
+    const timeout = setTimeout(() => setCelebrate(false), 3200);
+    return () => clearTimeout(timeout);
+  }, [isCerebras, finished]);
+
   return (
-    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""}`}>
+    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""}`}>
+      {celebrate ? <CerebrasCelebration /> : null}
       <div className="agent-top">
         <header>
           <h2>{config.name}</h2>
@@ -269,6 +409,25 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
         ) : null}
       </div>
     </article>
+  );
+}
+
+function CerebrasCelebration() {
+  const burstsRef = useRef(null);
+  if (!burstsRef.current) burstsRef.current = createBursts();
+
+  return (
+    <div className="celebration" aria-hidden="true">
+      {burstsRef.current.map((burst) => (
+        <div className="confetti-burst" key={burst.id} style={{ left: burst.left, top: burst.top }}>
+          {burst.pieces.map((piece) => (
+            <span key={piece.id} className="confetti-piece" style={piece.style}>
+              <i className={`confetti-shape ${piece.shape}`} style={{ "--color": piece.color }} />
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -309,8 +468,13 @@ function formatTimer(ms) {
 
 function TraceWindow({ events, compact = false }) {
   const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  useLayoutEffect(() => {
+    const trace = ref.current;
+    if (!trace) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      trace.scrollTop = trace.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [events.length]);
 
   return (

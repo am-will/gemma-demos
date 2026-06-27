@@ -147,6 +147,21 @@ h1 {
   border-radius: 0.65rem;
 }
 
+.folder-drop.empty {
+  grid-template-columns: 1fr;
+  place-items: center;
+}
+
+.folder-drop.loaded {
+  display: flex;
+  align-items: center;
+}
+
+.folder-drop.drag-active {
+  background: rgba(241, 90, 41, 0.12);
+  border-color: var(--cerebras);
+}
+
 .folder-drop svg {
   grid-row: span 2;
   width: 3.85rem;
@@ -155,6 +170,14 @@ h1 {
   color: #ffffff;
   background: var(--line);
   border-radius: 999px;
+}
+
+.folder-drop.empty svg {
+  grid-row: auto;
+}
+
+.folder-drop.drag-active svg {
+  background: var(--cerebras);
 }
 
 .folder-drop span,
@@ -174,8 +197,13 @@ h1 {
 }
 
 .folder-drop strong {
-  align-self: start;
+  align-self: center;
   font-weight: 400;
+}
+
+.folder-drop.loaded strong {
+  overflow: visible;
+  line-height: 1.12;
 }
 
 .hidden-input {
@@ -235,13 +263,15 @@ h1 {
 .agents-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 0.65rem;
   margin-top: 1.5rem;
 }
 
 .agent-card {
-  --agent-trace-height: clamp(18rem, 30vw, 30rem);
+  --agent-trace-height: clamp(13.8rem, 23vw, 23rem);
 
+  position: relative;
   display: grid;
   grid-template-rows: auto auto;
   min-width: 0;
@@ -261,10 +291,12 @@ h1 {
 }
 
 .agent-top {
+  position: relative;
   display: grid;
   gap: 1rem;
   min-width: 0;
   padding: 1rem;
+  overflow: hidden;
 }
 
 .agent-card.cerebras .agent-top {
@@ -303,6 +335,14 @@ h1 {
   text-align: center;
 }
 
+.agent-card.finished .completion-time {
+  font-weight: 800;
+}
+
+.agent-card.finished.winner .completion-time {
+  box-shadow: 0 0 0 0.25rem rgba(85, 230, 165, 0.34), 0 0 1.4rem rgba(85, 230, 165, 0.5);
+}
+
 .agent-card.cerebras .completion-time {
   color: var(--cerebras);
   background: #ffffff;
@@ -324,15 +364,90 @@ h1 {
   background: var(--terminal);
   border-radius: 1.25rem;
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.trace-window::-webkit-scrollbar,
+/* The whole Cerebras card gives a quick spring-pop the moment it finishes. */
+.agent-card.celebrating {
+  animation: card-pop 1000ms cubic-bezier(0.22, 1.2, 0.4, 1) both;
+}
+
+.celebration {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+}
+
+/* Each burst is a zero-size point dropped at a random spot on the card; its
+   pieces explode outward from there. Position comes from inline styles. */
+.confetti-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.3);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  animation: confetti-fly var(--dur) var(--delay) forwards;
+}
+
+.confetti-shape {
+  display: block;
+  background: var(--color);
+  box-shadow: 0 0.05rem 0.35rem rgba(20, 12, 6, 0.18);
+  transform-style: preserve-3d;
+  animation: confetti-flutter var(--flutter) linear infinite;
+}
+
+.confetti-shape.rect {
+  width: 68%;
+  height: 100%;
+  border-radius: 0.05rem;
+}
+
+.confetti-shape.circle {
+  width: 88%;
+  height: 88%;
+  border-radius: 50%;
+}
+
+.confetti-shape.ribbon {
+  width: 38%;
+  height: 128%;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration {
+    display: none;
+  }
+
+  .agent-card.celebrating {
+    animation: none;
+  }
+}
+
+.trace-window::-webkit-scrollbar {
+  display: none;
+}
+
 .match-strip::-webkit-scrollbar {
   height: 0.45rem;
   width: 0.45rem;
 }
 
-.trace-window::-webkit-scrollbar-thumb,
 .match-strip::-webkit-scrollbar-thumb {
   background: rgba(77, 77, 77, 0.32);
   border-radius: 999px;
@@ -438,7 +553,7 @@ h1 {
 
 .results-box {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.8rem;
   min-width: 0;
   padding: 1rem 1rem 1.35rem;
 }
@@ -471,20 +586,18 @@ h1 {
 
 .match-strip {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 4.85rem;
-  gap: 0.38rem;
-  overflow-x: auto;
-  padding: 0 0 0.25rem;
-  overscroll-behavior-inline: contain;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.55rem, 0.8vw, 0.85rem);
+  overflow: visible;
+  padding: 0 0 0.35rem;
 }
 
 .match-tile {
   display: grid;
-  gap: 0.16rem;
+  gap: 0.24rem;
   margin: 0;
   color: var(--gpu);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -496,11 +609,12 @@ h1 {
 .match-tile img,
 .match-thumb.placeholder {
   display: block;
-  width: 4.85rem;
-  height: 4.85rem;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   object-fit: cover;
   background: currentColor;
-  border-radius: 0.28rem;
+  border-radius: 0.42rem;
 }
 
 .match-thumb.placeholder {
@@ -557,6 +671,54 @@ h1 {
   }
 }
 
+@keyframes card-pop {
+  0% {
+    transform: scale(1);
+  }
+  16% {
+    transform: scale(1.035);
+  }
+  42% {
+    transform: scale(0.992);
+  }
+  70% {
+    transform: scale(1.007);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes confetti-fly {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.12, 0.78, 0.32, 1);
+  }
+  9% {
+    opacity: 1;
+  }
+  34% {
+    opacity: 1;
+    transform: translate3d(var(--bx), var(--by), 0) scale(1) rotate(calc(var(--spin) * 0.4));
+    animation-timing-function: cubic-bezier(0.4, 0, 0.72, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--fx), var(--fy), 0) scale(0.92) rotate(var(--spin));
+  }
+}
+
+@keyframes confetti-flutter {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+  100% {
+    transform: rotateX(360deg) rotateY(540deg);
+  }
+}
+
+
 @media (max-width: 1100px) {
   .hero,
   .agents-grid {
@@ -572,7 +734,7 @@ h1 {
   }
 
   .trace-window {
-    height: 22rem;
+    height: 16.8rem;
   }
 }
 
