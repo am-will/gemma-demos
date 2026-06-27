@@ -6,7 +6,7 @@ import "./styles.css";
 const api = "";
 const PANEL_PROVIDERS = ["cerebras", "gpu"];
 const PROVIDERS = {
-  cerebras: { name: "Cerebras", accent: "cerebras", logo: "/assets/cerebras-logo.png" },
+  cerebras: { name: "Cerebras", accent: "cerebras", logo: "/assets/cerebras-color.png" },
   gpu: { name: "GPU", accent: "gpu", logo: "/assets/gemini-logo.png" }
 };
 const CONFETTI_COLORS = ["#ffffff", "#ffd23f", "#5ce6a5", "#36c5ff", "#ff5fa2", "#bb8bff", "#fff0bf"];
@@ -288,7 +288,7 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
         <header>
           <div>
             <h2><img src={config.logo} alt="" /> {config.name}</h2>
-            <span>{sanitizeTraceText(health?.model || runState?.model || "gemma-4")}</span>
+            <span>{formatPanelModel(provider, health?.model || runState?.model || "gemma-4")}</span>
           </div>
           <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
         </header>
@@ -466,6 +466,14 @@ function sanitizeTraceText(value) {
     .replaceAll("ai.google.dev", "gpu.provider")
     .replace(/:free\b/gi, "")
     .replace(/\bfree\b/gi, "standard");
+}
+
+function formatPanelModel(provider, value) {
+  const sanitized = sanitizeTraceText(value);
+  if (provider === "cerebras" && /^gemma-4-31b(?:-trial)?$/i.test(sanitized)) {
+    return "Gemma 4 31B";
+  }
+  return sanitized;
 }
 
 function formatTraceMessage(event) {
