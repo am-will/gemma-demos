@@ -29,7 +29,7 @@ const ffmpegHwaccel = process.env.FFMPEG_HWACCEL || (process.platform === "darwi
 const extractionMode = process.env.FRAME_EXTRACTION_MODE || "sparse-sharp";
 const extractionSeekWorkers = clampInteger(process.env.FRAME_EXTRACTION_SEEK_WORKERS, 1, 8, 4);
 const extractionBlurThreshold = Number(process.env.FRAME_EXTRACTION_BLUR_THRESHOLD || 85);
-const gpuBatchSize = clampInteger(process.env.GPU_BATCH_SIZE, 1, 8, 4);
+const frameBatchSize = clampInteger(process.env.FRAME_INSPECTION_BATCH_SIZE || process.env.GPU_BATCH_SIZE, 1, 8, 4);
 
 await Promise.all([mkdir(uploadsDir, { recursive: true }), mkdir(tmpDir, { recursive: true }), mkdir(outputsDir, { recursive: true })]);
 
@@ -105,6 +105,7 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
       confidenceFloor,
       frameConcurrency,
       tileConcurrency,
+      frameBatchSize,
       models: Object.fromEntries(providerOrder.map((id) => [id, providers[id].publicModel])),
       extractionMaxWidth,
       extractionJpegQuality,
@@ -363,19 +364,13 @@ async function runDamageProvider({ job, provider, originalName, jobOut, framesDi
       total
     });
   };
-  const frameFindings = provider.actualProvider === "openrouter"
-    ? await inspectFramesWithGpuBatches(provider, frameFiles, framesDir, onInspectionProgress, (type, payload) => emitJobEvent(job, type, payload))
-    : await mapWithConcurrency(
-      frameFiles,
-      job.settings.frameConcurrency,
-      async (filename, index) => {
-        const framePath = path.join(framesDir, filename);
-        const frameNumber = index + 1;
-        const findings = await inspectFrameWithProvider(provider, framePath, frameNumber, frameFiles.length, job.settings.tileConcurrency);
-        return { frameNumber, filename, framePath, findings };
-      },
-      onInspectionProgress
-    );
+  const frameFindings = await inspectFramesWithBatches(
+    provider,
+    frameFiles,
+    framesDir,
+    onInspectionProgress,
+    (type, payload) => emitJobEvent(job, type, payload)
+  );
 
   setProviderStep(job, provider.id, "inspect", "complete", `Inspected ${frameFiles.length} sampled frame${frameFiles.length === 1 ? "" : "s"}`, {
     progress: 1,
@@ -690,9 +685,7 @@ function sanitizePublicModel(value) {
 
 function renderDamageCurl(provider, frameCount) {
   const keyLabel = provider.id === "gpu" ? "$GPU_API_KEY" : `$${provider.keyEnv}`;
-  const imageSummary = provider.id === "gpu"
-    ? `${frameCount} sampled image_url parts in batches of ${gpuBatchSize}`
-    : `${frameCount} sampled image_url parts`;
+  const imageSummary = `${frameCount} sampled image_url parts in batches of ${frameBatchSize}`;
   return sanitizeTraceText([
     `curl -s ${provider.apiHostLabel} \\`,
     `  -H "Authorization: Bearer ${keyLabel}" \\`,
@@ -1038,14 +1031,14 @@ Frame ${frameNumber} of ${totalFrames}.`;
   return tileResults.flat();
 }
 
-async function inspectFramesWithGpuBatches(provider, frameFiles, framesDir, onProgress, emit) {
-  const batches = chunkArray(frameFiles, gpuBatchSize);
+async function inspectFramesWithBatches(provider, frameFiles, framesDir, onProgress, emit) {
+  const batches = chunkArray(frameFiles, frameBatchSize);
   const frameFindings = [];
   let completed = 0;
   emit("trace", {
     provider: provider.id,
     phase: "batch",
-    message: `GPU will inspect ${frameFiles.length} frames in ${batches.length} batch${batches.length === 1 ? "" : "es"} of up to ${gpuBatchSize}`
+    message: `${provider.label} will inspect ${frameFiles.length} frames in ${batches.length} batch${batches.length === 1 ? "" : "es"} of up to ${frameBatchSize}`
   });
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
@@ -1098,9 +1091,14 @@ async function inspectFrameBatchWithProvider(provider, frames, batchNumber, batc
       }
     ],
     temperature: 0,
-    max_tokens: Math.max(1200, frames.length * 900),
     response_format: { type: "json_object" }
   };
+  const maxCompletionTokens = Math.max(1200, frames.length * 900);
+  if (provider.actualProvider === "openrouter") {
+    payload.max_tokens = maxCompletionTokens;
+  } else {
+    payload.max_completion_tokens = maxCompletionTokens;
+  }
 
   const response = await fetch(provider.apiUrl, {
     method: "POST",
@@ -1109,8 +1107,10 @@ async function inspectFrameBatchWithProvider(provider, frames, batchNumber, batc
       "Content-Type": "application/json",
       Accept: "application/json",
       "User-Agent": "damage-scout-demo/0.1",
-      "HTTP-Referer": "http://127.0.0.1:5173",
-      "X-Title": "Damage Scout"
+      ...(provider.actualProvider === "openrouter" ? {
+        "HTTP-Referer": "http://127.0.0.1:5173",
+        "X-Title": "Damage Scout"
+      } : {})
     },
     body: JSON.stringify(payload)
   });
@@ -1155,10 +1155,15 @@ Damage examples to actively look for:
 
 Rules:
 - Treat each frame independently. Do not copy detections from one frame to another.
-- Enumerate distinct damage items visible in each frame.
+- Return one frame object for every listed frame, even when its detections array is empty.
+- Enumerate every distinct damage item visible in each frame.
+- Do not stop after the most obvious mark. Check wheel arches, quarter panels, fenders, doors, bumpers, mirror-adjacent panels, rocker panels, lights, and wheels.
+- Do not merge a dent and nearby scratches into one detection. If a dent sits near scratches or scuffs, return separate boxes.
 - Use lower confidence for uncertain scratches instead of suppressing them.
 - Reject reflections, shadows, dirt, water streaks, normal body seams, license plate text, and camera motion blur unless there is a clear damage cue.
+- Subtle dent cues matter: small circular depressions, soft concave dimples, warped highlight bands, crescent shadows, bent reflection lines, and local panel deformation on otherwise smooth silver or glossy panels.
 - Coordinates MUST be normalized decimals from 0 to 1 relative to that frame.
+- Every detection must include a tight bbox. For long scratches, cover the full scratch path even if it is thin.
 - If there is no visible damage in a frame, return that frame with an empty detections array.
 
 Batch ${batchNumber} of ${batchCount}. Total sampled frames: ${totalFrames}.

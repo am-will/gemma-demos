@@ -186,6 +186,12 @@ function App() {
     }
   }
 
+  const panelResults = Object.fromEntries(PANEL_PROVIDERS.map((provider) => [
+    provider,
+    results[provider] || job?.result?.providers?.[provider]
+  ]));
+  const bothPanelsComplete = PANEL_PROVIDERS.every((provider) => panelResults[provider]?.status === "complete");
+
   return (
     <main className="page-shell">
       <section className="hero">
@@ -234,14 +240,14 @@ function App() {
         </div>
       </section>
 
-      <section className="agents-grid">
+      <section className={`agents-grid ${bothPanelsComplete ? "matched-results" : ""}`}>
         {PANEL_PROVIDERS.map((provider) => (
           <AgentPanel
             key={provider}
             provider={provider}
             health={health?.providers?.[provider]}
             events={events.filter((event) => event.provider === provider)}
-            result={results[provider] || job?.result?.providers?.[provider]}
+            result={panelResults[provider]}
             runState={job?.providerRuns?.[provider]}
             running={inspecting}
             winnerProvider={winnerProvider}
@@ -257,7 +263,7 @@ function App() {
 
 function AgentPanel({ provider, health, events, result, runState, running, winnerProvider, runStartedAt, now }) {
   const config = PROVIDERS[provider];
-  const detections = (result?.detections || []).slice(0, 6);
+  const detections = result?.detections || [];
   const totalDetections = result?.detections?.length || 0;
   const finished = Boolean(result?.totalLatencyMs);
   const isWinner = winnerProvider === provider;
@@ -310,7 +316,6 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
             ))}
           </div>
         ) : null}
-        {totalDetections > detections.length ? <p className="more-results">Showing 6 of {totalDetections}. Full manifest is in the job output.</p> : null}
       </div>
     </article>
   );

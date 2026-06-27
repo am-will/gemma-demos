@@ -790,6 +790,14 @@ h1 {
   .agents-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .agents-grid.matched-results {
+    align-items: stretch;
+  }
+
+  .agents-grid.matched-results .agent-card {
+    height: 100%;
+  }
 }
 
 @media (min-width: 1180px) {
