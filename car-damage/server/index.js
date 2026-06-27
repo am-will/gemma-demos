@@ -130,8 +130,8 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
   });
 });
 
-app.post("/api/jobs/:jobId/inspect", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+app.post("/api/jobs/:jobId/inspect", async (req, res) => {
+  const job = await getJob(req.params.jobId);
   if (!job) {
     res.status(404).json({ error: "Unknown job" });
     return;
@@ -154,8 +154,8 @@ app.post("/api/jobs/:jobId/inspect", (req, res) => {
   });
 });
 
-app.get("/api/jobs/:jobId/events", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+app.get("/api/jobs/:jobId/events", async (req, res) => {
+  const job = await getJob(req.params.jobId);
   if (!job) {
     res.status(404).json({ error: "Unknown job" });
     return;
@@ -178,8 +178,8 @@ app.get("/api/jobs/:jobId/events", (req, res) => {
   });
 });
 
-app.get("/api/jobs/:jobId", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+app.get("/api/jobs/:jobId", async (req, res) => {
+  const job = await getJob(req.params.jobId);
   if (!job) {
     res.status(404).json({ error: "Unknown job" });
     return;
@@ -196,6 +196,12 @@ app.get("/api/jobs/:jobId/download", (req, res) => {
 
 app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(distDir, "index.html"));
+});
+
+app.use((error, _req, res, _next) => {
+  console.error(error);
+  if (res.headersSent) return;
+  res.status(500).json({ error: cleanText(error?.message || "Server error") });
 });
 
 app.listen(port, "127.0.0.1", () => {
@@ -243,6 +249,7 @@ async function processExtractionJob(job, videoPath, originalName) {
   job.progress = 18;
   job.message = `Extracted ${frameFiles.length} frame${frameFiles.length === 1 ? "" : "s"}. Ready for side-by-side inspection.`;
   job.internal = { videoPath, originalName, jobTmp, jobOut, framesDir, frameFiles, extraction };
+  await persistJobState(job);
 }
 
 async function continueInspectionJob(job) {
@@ -304,6 +311,7 @@ async function continueInspectionJob(job) {
     providers: providerResults
   };
   await writeFile(path.join(jobOut, "manifest.json"), JSON.stringify(manifest, null, 2));
+  await rm(path.join(jobOut, "job-state.json"), { force: true });
   await rm(jobTmp, { recursive: true, force: true });
   await rm(videoPath, { force: true });
 
@@ -317,6 +325,108 @@ async function continueInspectionJob(job) {
   job.result = { ...manifest, manifestUrl: `/outputs/jobs/${job.id}/manifest.json` };
   delete job.internal;
   emitJobEvent(job, "run_done", { status: completedRuns.length ? "complete" : "failed", manifestUrl: job.result.manifestUrl, providers: providerResults });
+}
+
+async function getJob(jobId) {
+  const existing = jobs.get(jobId);
+  if (existing) return existing;
+  const hydrated = await hydrateJobFromDisk(jobId);
+  if (hydrated) jobs.set(jobId, hydrated);
+  return hydrated;
+}
+
+async function hydrateJobFromDisk(jobId) {
+  const jobOut = path.join(outputsDir, jobId);
+  const manifest = await readJsonIfExists(path.join(jobOut, "manifest.json"));
+  if (manifest) {
+    const completedRuns = Object.values(manifest.providers || {}).filter((result) => result.status === "complete");
+    const totalDetections = completedRuns.reduce((total, result) => total + (result.detections?.length || 0), 0);
+    return {
+      id: jobId,
+      status: completedRuns.length ? "complete" : "failed",
+      progress: 100,
+      message: completedRuns.length
+        ? `Comparison complete with ${totalDetections} total damage candidate${totalDetections === 1 ? "" : "s"}`
+        : "Comparison failed",
+      createdAt: manifest.createdAt,
+      settings: manifest.settings,
+      pipeline: buildHydratedPipeline(completedRuns.length ? "complete" : "failed"),
+      providerRuns: buildHydratedProviderRuns(manifest.providers || {}),
+      events: [],
+      subscribers: new Set(),
+      inspectionStarted: true,
+      result: { ...manifest, manifestUrl: `/outputs/jobs/${jobId}/manifest.json` },
+      error: null
+    };
+  }
+
+  const state = await readJsonIfExists(path.join(jobOut, "job-state.json"));
+  if (!state) return null;
+  const status = state.status === "inspecting" ? "extracted" : state.status;
+  return {
+    ...state,
+    status,
+    inspectionStarted: false,
+    message: status === "extracted" ? "Frames restored. Ready for side-by-side inspection." : state.message,
+    events: [],
+    subscribers: new Set(),
+    result: null,
+    error: state.error || null
+  };
+}
+
+async function persistJobState(job) {
+  if (!job?.internal?.jobOut) return;
+  const state = {
+    id: job.id,
+    status: job.status,
+    progress: job.progress,
+    message: job.message,
+    createdAt: job.createdAt,
+    settings: job.settings,
+    pipeline: job.pipeline,
+    providerRuns: job.providerRuns,
+    inspectionStarted: false,
+    internal: job.internal,
+    error: job.error || null
+  };
+  await writeFile(path.join(job.internal.jobOut, "job-state.json"), JSON.stringify(state, null, 2));
+}
+
+async function readJsonIfExists(filePath) {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function buildHydratedPipeline(status) {
+  return buildPipeline().map((step) => ({
+    ...step,
+    status,
+    progress: status === "complete" ? 1 : step.progress,
+    detail: status === "complete" ? "Restored from manifest" : "Restored failed job"
+  }));
+}
+
+function buildHydratedProviderRuns(providerResults) {
+  return Object.fromEntries(providerOrder.map((id) => {
+    const result = providerResults[id];
+    const provider = providers[id];
+    return [id, {
+      provider: id,
+      label: provider.label,
+      model: result?.model || provider.publicModel,
+      status: result?.status || "failed",
+      message: result?.status === "complete"
+        ? `${result.detections?.length || 0} evidence image${(result.detections?.length || 0) === 1 ? "" : "s"} ready`
+        : result?.error || "No result restored",
+      pipeline: buildProviderPipeline().map((step) => ({ ...step, status: result?.status === "complete" ? "complete" : "failed", progress: result?.status === "complete" ? 1 : step.progress })),
+      totalLatencyMs: result?.totalLatencyMs || null,
+      error: result?.error || null
+    }];
+  }));
 }
 
 async function runDamageProvider({ job, provider, originalName, jobOut, framesDir, frameFiles, extraction }) {
@@ -1497,9 +1607,10 @@ function dedupeFindings(frameFindings, confidenceFloor) {
       const sameDamageType = existing.damageType === candidate.damageType || tokenOverlap(existing.label, candidate.label) >= 0.5;
       if (!sameDamageType) return false;
       const nearbyFrame = Math.abs(existing.frameNumber - candidate.frameNumber) <= 2;
-      const samePanel = tokenOverlap(existing.location, candidate.location) >= 0.5;
-      const overlappingBox = iou(existing.bbox, candidate.bbox) > 0.22;
-      return overlappingBox || (nearbyFrame && samePanel);
+      const sameFrame = existing.frameNumber === candidate.frameNumber;
+      const overlappingBox = iou(existing.bbox, candidate.bbox);
+      if (sameFrame) return overlappingBox > 0.34;
+      return nearbyFrame && overlappingBox > 0.46;
     });
     if (!duplicate) selected.push(candidate);
   }
