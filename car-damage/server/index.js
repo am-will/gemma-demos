@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import { nanoid } from "nanoid";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -93,6 +93,9 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
   const confidenceFloor = clampNumber(req.body.confidenceFloor, 0, 1, 0.35);
   const frameConcurrency = clampInteger(req.body.frameConcurrency, 1, 8, 4);
   const tileConcurrency = clampInteger(req.body.tileConcurrency, 1, 6, 3);
+  const jobTmp = path.join(tmpDir, jobId);
+  const jobOut = path.join(outputsDir, jobId);
+  const framesDir = path.join(jobTmp, "frames");
   const job = {
     id: jobId,
     status: "queued",
@@ -116,9 +119,20 @@ app.post("/api/analyze", upload.single("video"), async (req, res) => {
     events: [],
     subscribers: new Set(),
     inspectionStarted: false,
+    internal: {
+      videoPath: req.file.path,
+      originalName: req.file.originalname,
+      jobTmp,
+      jobOut,
+      framesDir,
+      frameFiles: [],
+      extraction: null
+    },
     result: null,
     error: null
   };
+  await mkdir(jobOut, { recursive: true });
+  await persistJobState(job);
   jobs.set(jobId, job);
   res.status(202).json({ jobId });
 
@@ -201,7 +215,10 @@ app.get("/{*path}", (_req, res) => {
 app.use((error, _req, res, _next) => {
   console.error(error);
   if (res.headersSent) return;
-  res.status(500).json({ error: cleanText(error?.message || "Server error") });
+  const isUploadError = error instanceof multer.MulterError;
+  const status = isUploadError && error.code === "LIMIT_FILE_SIZE" ? 413 : isUploadError ? 400 : 500;
+  const message = status === 413 ? "Upload is too large. Use a video under 500 MB." : error?.message || "Server error";
+  res.status(status).json({ error: cleanText(message) });
 });
 
 app.listen(port, "127.0.0.1", () => {
@@ -209,9 +226,19 @@ app.listen(port, "127.0.0.1", () => {
 });
 
 async function processExtractionJob(job, videoPath, originalName) {
-  const jobTmp = path.join(tmpDir, job.id);
-  const jobOut = path.join(outputsDir, job.id);
-  const framesDir = path.join(jobTmp, "frames");
+  const jobTmp = job.internal?.jobTmp || path.join(tmpDir, job.id);
+  const jobOut = job.internal?.jobOut || path.join(outputsDir, job.id);
+  const framesDir = job.internal?.framesDir || path.join(jobTmp, "frames");
+  job.internal = {
+    ...(job.internal || {}),
+    videoPath,
+    originalName,
+    jobTmp,
+    jobOut,
+    framesDir,
+    frameFiles: job.internal?.frameFiles || [],
+    extraction: job.internal?.extraction || null
+  };
   await Promise.all([mkdir(framesDir, { recursive: true }), mkdir(jobOut, { recursive: true })]);
 
   job.status = "processing";
@@ -220,6 +247,7 @@ async function processExtractionJob(job, videoPath, originalName) {
   setPipelineStep(job, "extract", "active", "Starting ffmpeg frame extraction", { progress: 0 });
   job.message = "Extracting representative frames";
   job.progress = 5;
+  await persistJobState(job);
 
   const extractionStartedAt = Date.now();
   const extraction = await extractFrames(videoPath, framesDir, job.settings.sampleFps, job.settings.maxFrames, (event) => {
@@ -261,6 +289,7 @@ async function continueInspectionJob(job) {
   job.status = "inspecting";
   job.progress = 20;
   job.message = `Running ${providerOrder.length} damage agents side by side`;
+  await persistJobState(job);
   emitJobEvent(job, "trace", { provider: "system", phase: "start", message: `Starting comparison with ${frameFiles.length} extracted frame${frameFiles.length === 1 ? "" : "s"}` });
 
   const settledRuns = await Promise.allSettled(providerOrder.map((providerId) => runDamageProvider({
@@ -299,6 +328,7 @@ async function continueInspectionJob(job) {
     emitJobEvent(job, "error", { provider: provider.id, message });
     emitJobEvent(job, "provider_done", providerResults[provider.id]);
   });
+  await persistJobState(job);
 
   const manifest = {
     jobId: job.id,
@@ -331,7 +361,10 @@ async function getJob(jobId) {
   const existing = jobs.get(jobId);
   if (existing) return existing;
   const hydrated = await hydrateJobFromDisk(jobId);
-  if (hydrated) jobs.set(jobId, hydrated);
+  if (hydrated) {
+    jobs.set(jobId, hydrated);
+    maybeResumeExtractionJob(hydrated);
+  }
   return hydrated;
 }
 
@@ -370,9 +403,42 @@ async function hydrateJobFromDisk(jobId) {
     message: status === "extracted" ? "Frames restored. Ready for side-by-side inspection." : state.message,
     events: [],
     subscribers: new Set(),
-    result: null,
+    partialProviderResults: state.partialProviderResults || null,
+    result: state.partialProviderResults ? { providers: state.partialProviderResults } : null,
     error: state.error || null
   };
+}
+
+async function maybeResumeExtractionJob(job) {
+  if (!["queued", "processing"].includes(job.status) || job.extractionResumeStarted) return;
+  const { videoPath, originalName } = job.internal || {};
+  if (!videoPath || !originalName) {
+    markExtractionInterrupted(job);
+    return;
+  }
+  try {
+    await access(videoPath);
+  } catch {
+    markExtractionInterrupted(job);
+    return;
+  }
+  job.extractionResumeStarted = true;
+  processExtractionJob(job, videoPath, originalName).catch((error) => {
+    job.status = "failed";
+    job.error = error instanceof Error ? error.message : String(error);
+    job.message = "Frame extraction failed";
+    failActivePipelineStep(job, job.error);
+    persistJobState(job).catch(() => {});
+  });
+}
+
+function markExtractionInterrupted(job) {
+  job.status = "failed";
+  job.progress = 0;
+  job.message = "Upload was interrupted. Upload the video again.";
+  job.error = "Upload was interrupted. Upload the video again.";
+  failActivePipelineStep(job, job.error);
+  persistJobState(job).catch(() => {});
 }
 
 async function persistJobState(job) {
@@ -386,6 +452,7 @@ async function persistJobState(job) {
     settings: job.settings,
     pipeline: job.pipeline,
     providerRuns: job.providerRuns,
+    partialProviderResults: job.partialProviderResults || null,
     inspectionStarted: false,
     internal: job.internal,
     error: job.error || null
@@ -572,6 +639,11 @@ async function runDamageProvider({ job, provider, originalName, jobOut, framesDi
     totalLatencyMs,
     message: annotated.length ? `${annotated.length} evidence image${annotated.length === 1 ? "" : "s"} ready` : "No visible damage candidates"
   };
+  job.partialProviderResults = {
+    ...(job.partialProviderResults || {}),
+    [provider.id]: result
+  };
+  await persistJobState(job);
   emitJobEvent(job, "provider_done", result);
   return result;
 }

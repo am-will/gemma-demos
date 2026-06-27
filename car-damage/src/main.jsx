@@ -60,6 +60,21 @@ function App() {
     const interval = setInterval(async () => {
       try {
         const response = await fetch(`${api}/api/jobs/${jobId}`);
+        if (response.status === 404) {
+          const message = "Job was interrupted. Upload the video again.";
+          setError(message);
+          setJob((current) => ({
+            ...(current || {}),
+            status: "failed",
+            progress: 0,
+            message,
+            pipeline: makeUploadPipeline(0, "failed"),
+            providerRuns: makeIdleProviderRuns()
+          }));
+          setJobId(null);
+          clearInterval(interval);
+          return;
+        }
         const data = await readJsonResponse(response);
         setJob(data);
         if (data.result?.providers) {
@@ -377,11 +392,12 @@ function uploadAnalysis(form, onUploadProgress) {
       try {
         data = JSON.parse(xhr.responseText || "{}");
       } catch {
-        reject(new Error("Upload returned an invalid response"));
+        const snippet = (xhr.responseText || "").replace(/\s+/g, " ").trim().slice(0, 160);
+        reject(new Error(`HTTP ${xhr.status || 0}: server returned non-JSON response${snippet ? ` (${snippet})` : ""}`));
         return;
       }
       if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-      else reject(new Error(data.error || "Upload failed"));
+      else reject(new Error(data.error || `HTTP ${xhr.status}: Upload failed`));
     };
     xhr.onerror = () => reject(new Error("Upload failed"));
     xhr.send(form);
@@ -413,9 +429,15 @@ function makeIdleProviderRuns() {
   return Object.fromEntries(PANEL_PROVIDERS.map((provider) => [provider, { provider, label: PROVIDERS[provider].name, status: "idle", model: "gemma-4" }]));
 }
 
-function makeUploadPipeline() {
+function makeUploadPipeline(progress = 0, status = "active") {
   return [
-    { key: "extract", label: "Extract frames", status: "active", detail: "Preparing frames", progress: 0 }
+    {
+      key: "extract",
+      label: "Extract frames",
+      status,
+      detail: status === "failed" ? "Upload interrupted" : status === "complete" ? "Frames ready" : "Preparing frames",
+      progress: status === "complete" ? 1 : Math.max(0, Math.min(1, progress / 100))
+    }
   ];
 }
 
