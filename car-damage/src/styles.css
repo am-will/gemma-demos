@@ -548,10 +548,14 @@ h1 {
 }
 
 .results-heading {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .results-box h3 {
+  grid-column: 1;
   color: var(--gpu);
   font-size: clamp(1.15rem, 1.5vw, 1.7rem);
   font-weight: 700;
@@ -566,6 +570,35 @@ h1 {
   color: var(--gpu);
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.pager-controls {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: var(--line);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pager-controls button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: #ffffff;
+  background: var(--line);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.pager-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
 }
 
 .evidence-grid {
@@ -798,13 +831,6 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .agents-grid.matched-results {
-    align-items: stretch;
-  }
-
-  .agents-grid.matched-results .agent-card {
-    height: 100%;
-  }
 }
 
 @media (min-width: 1180px) {

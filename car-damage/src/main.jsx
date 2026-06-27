@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, Image as ImageIcon, UploadCloud } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Image as ImageIcon, UploadCloud } from "lucide-react";
 import "./styles.css";
 
 const api = "";
@@ -208,7 +208,7 @@ function App() {
     provider,
     results[provider] || job?.result?.providers?.[provider]
   ]));
-  const bothPanelsComplete = PANEL_PROVIDERS.every((provider) => panelResults[provider]?.status === "complete");
+  const hasAnyPanelResult = PANEL_PROVIDERS.some((provider) => panelResults[provider]?.status === "complete");
 
   return (
     <main className="page-shell">
@@ -228,8 +228,12 @@ function App() {
               style={{ "--reveal": `${extractionPercent}%`, "--reveal-ratio": previewRevealProgress }}
               type="button"
             >
-              {previewUrl ? (
-                <span className="preview-reveal" aria-hidden="true">
+              {previewUrl && previewRevealProgress > 0 ? (
+                <span
+                  className="preview-reveal"
+                  aria-hidden="true"
+                  style={{ clipPath: `inset(0 ${Math.max(0, 100 - extractionPercent)}% 0 0)` }}
+                >
                   <video
                     className="video-preview"
                     src={previewUrl}
@@ -258,7 +262,7 @@ function App() {
         </div>
       </section>
 
-      <section className={`agents-grid ${bothPanelsComplete ? "matched-results" : ""}`}>
+      <section className={`agents-grid ${hasAnyPanelResult ? "has-results" : ""}`}>
         {PANEL_PROVIDERS.map((provider) => (
           <AgentPanel
             key={provider}
@@ -281,13 +285,19 @@ function App() {
 
 function AgentPanel({ provider, health, events, result, runState, running, winnerProvider, runStartedAt, now }) {
   const config = PROVIDERS[provider];
+  const pageSize = 6;
   const detections = result?.detections || [];
   const totalDetections = result?.detections?.length || 0;
+  const pageCount = Math.max(1, Math.ceil(totalDetections / pageSize));
   const finished = Boolean(result?.totalLatencyMs);
   const isWinner = winnerProvider === provider;
   const isLoser = Boolean(winnerProvider && finished && !isWinner);
   const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
   const [celebrate, setCelebrate] = useState(false);
+  const [page, setPage] = useState(0);
+  const visibleDetections = detections.slice(page * pageSize, page * pageSize + pageSize);
+  const canPageBack = page > 0;
+  const canPageForward = page < pageCount - 1;
 
   useEffect(() => {
     if (provider !== "cerebras" || !finished) {
@@ -298,6 +308,10 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
     const timeout = setTimeout(() => setCelebrate(false), 3200);
     return () => clearTimeout(timeout);
   }, [provider, finished]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [result?.reportUrl, totalDetections]);
 
   return (
     <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""}`}>
@@ -316,6 +330,17 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
       <div className="results-box">
         <div className="results-heading">
           <h3>{totalDetections} Evidence Frame{totalDetections === 1 ? "" : "s"}</h3>
+          {totalDetections > pageSize ? (
+            <div className="pager-controls" aria-label={`${config.name} evidence pagination`}>
+              <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={!canPageBack} aria-label="Previous evidence page">
+                <ChevronLeft size={18} />
+              </button>
+              <span>{page + 1}/{pageCount}</span>
+              <button type="button" onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))} disabled={!canPageForward} aria-label="Next evidence page">
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          ) : null}
         </div>
         {result?.error ? <div className="panel-error">{sanitizeTraceText(result.error)}</div> : null}
         {!result?.error && !detections.length ? (
@@ -323,7 +348,7 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
         ) : null}
         {detections.length ? (
           <div className="evidence-grid">
-            {detections.map((item, index) => (
+            {visibleDetections.map((item, index) => (
               <a className="evidence-tile" href={item.imageUrl} target="_blank" rel="noreferrer" key={`${provider}-${item.imageUrl || index}`}>
                 {item.imageUrl ? <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} /> : <span className="image-placeholder"><ImageIcon size={24} /></span>}
                 <figcaption>
