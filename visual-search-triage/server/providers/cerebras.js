@@ -4,8 +4,8 @@ import { attachImageUrls, buildBatchPrompt, normalizeProviderResults, parseJsonF
 const PROVIDER = "cerebras";
 const API_URL = "https://api.cerebras.ai/v1/chat/completions";
 
-export async function runCerebrasAgent({ description, batches, emit }) {
-  const model = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
+export async function runCerebrasAgent({ description, batches, emit, signal }) {
+  const model = resolveCerebrasModel();
   const apiKey = process.env.CEREBRAS_API_KEY;
   const startedAt = performance.now();
   const parsedBatches = [];
@@ -14,6 +14,7 @@ export async function runCerebrasAgent({ description, batches, emit }) {
   if (!apiKey) throw new Error("Missing CEREBRAS_API_KEY.");
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    throwIfAborted(signal);
     const batch = batches[batchIndex];
     const prompt = buildBatchPrompt({ description, images: batch, batchIndex, batchCount: batches.length });
     const body = {
@@ -52,6 +53,7 @@ export async function runCerebrasAgent({ description, batches, emit }) {
       const batchStarted = performance.now();
       const response = await fetch(API_URL, {
         method: "POST",
+        signal,
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json"
@@ -92,6 +94,7 @@ export async function runCerebrasAgent({ description, batches, emit }) {
         usage: json.usage || null
       });
     } catch (error) {
+      throwIfAborted(signal);
       emit("error", {
         provider: PROVIDER,
         batch: batchIndex + 1,
@@ -119,6 +122,15 @@ export async function runCerebrasAgent({ description, batches, emit }) {
     ...normalized
   });
   return { provider: PROVIDER, status: "complete", totalLatencyMs, model, ...normalized };
+}
+
+function resolveCerebrasModel() {
+  const configured = process.env.CEREBRAS_MODEL || "gemma-4-31b";
+  return configured === "gemma-4-31b-trial" ? "gemma-4-31b" : configured;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new Error("Run canceled.");
 }
 
 function renderCerebrasCurl({ model, imageCount, description }) {

@@ -67,7 +67,7 @@ app.get("/api/health", (_req, res) => {
       cerebras: {
         label: "Cerebras API",
         hasKey: Boolean(process.env.CEREBRAS_API_KEY),
-        model: process.env.CEREBRAS_MODEL || "gemma-4-31b-trial"
+        model: getCerebrasModel()
       }
     },
     batching: {
@@ -110,7 +110,8 @@ app.post("/api/runs", upload.array("images"), async (req, res) => {
     started: false,
     events: [],
     subscribers: new Set(),
-    manifest: null
+    manifest: null,
+    abortController: new AbortController()
   };
   runs.set(runId, run);
 
@@ -140,13 +141,30 @@ app.get("/api/runs/:runId/events", async (req, res) => {
     run.subscribers.delete(subscriber);
   });
 
+  if (run.status === "canceled") {
+    emit(run, "run_done", { status: "canceled" });
+    return;
+  }
+
   if (!run.started) {
     run.started = true;
     processRun(run).catch((error) => {
+      if (run.status === "canceled" || error.name === "AbortError" || error.message === "Run canceled.") return;
       emit(run, "error", { provider: "system", message: error.message || String(error) });
       emit(run, "run_done", { status: "failed" });
     });
   }
+});
+
+app.post("/api/runs/:runId/cancel", async (req, res) => {
+  const run = runs.get(req.params.runId);
+  if (!run) {
+    res.status(404).json({ error: "Unknown run" });
+    return;
+  }
+
+  cancelRun(run);
+  res.json({ ok: true, status: run.status });
 });
 
 app.get("/api/runs/:runId/manifest", (req, res) => {
@@ -176,6 +194,7 @@ async function processRun(run) {
     runDir: run.runOutputDir,
     emit: (type, payload) => emit(run, type, payload)
   });
+  if (run.abortController.signal.aborted) throw new AbortError();
   const batches = makeBatches(images);
   emit(run, "metric", {
     provider: "system",
@@ -192,9 +211,11 @@ async function processRun(run) {
   const providerEmit = (type, payload) => emit(run, type, payload);
   const runLeftProvider = run.leftProvider === "openrouter" ? runOpenRouterAgent : runGeminiAgent;
   const [leftProvider, cerebras] = await Promise.allSettled([
-    runLeftProvider({ description: run.description, batches, emit: providerEmit }),
-    runCerebrasAgent({ description: run.description, batches, emit: providerEmit })
+    runLeftProvider({ description: run.description, batches, emit: providerEmit, signal: run.abortController.signal }),
+    runCerebrasAgent({ description: run.description, batches, emit: providerEmit, signal: run.abortController.signal })
   ]);
+
+  if (run.abortController.signal.aborted) throw new AbortError();
 
   const results = {
     [run.leftProvider]: settleResult(run.leftProvider, leftProvider, run, "gemini"),
@@ -219,7 +240,7 @@ async function processRun(run) {
         hasKey: Boolean(process.env.OPENROUTER_API_KEY)
       },
       cerebras: {
-        model: process.env.CEREBRAS_MODEL || "gemma-4-31b-trial",
+        model: getCerebrasModel(),
         hasKey: Boolean(process.env.CEREBRAS_API_KEY)
       }
     },
@@ -237,6 +258,22 @@ async function processRun(run) {
   });
 }
 
+function cancelRun(run) {
+  if (run.status === "canceled" || run.status === "complete") return;
+  run.status = "canceled";
+  run.abortController.abort();
+  emit(run, "trace", { provider: "system", phase: "cancel", message: "Run canceled. Active provider requests were aborted." });
+  emit(run, "run_done", { status: "canceled" });
+  cleanupFiles(run.files).catch(() => {});
+}
+
+class AbortError extends Error {
+  constructor() {
+    super("Run canceled.");
+    this.name = "AbortError";
+  }
+}
+
 function settleResult(provider, settled, run, panelProvider = provider) {
   if (settled.status === "fulfilled") return settled.value;
   const message = settled.reason?.message || String(settled.reason);
@@ -246,6 +283,7 @@ function settleResult(provider, settled, run, panelProvider = provider) {
 }
 
 function emit(run, type, payload) {
+  if (run.status === "canceled" && type !== "trace" && type !== "run_done") return;
   const event = {
     type,
     at: new Date().toISOString(),
@@ -262,4 +300,9 @@ function writeSse(res, event) {
 
 async function cleanupFiles(files) {
   await Promise.all((files || []).map((file) => rm(file.path, { force: true }).catch(() => {})));
+}
+
+function getCerebrasModel() {
+  const configured = process.env.CEREBRAS_MODEL || "gemma-4-31b";
+  return configured === "gemma-4-31b-trial" ? "gemma-4-31b" : configured;
 }

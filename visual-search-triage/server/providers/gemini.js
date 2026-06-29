@@ -3,7 +3,7 @@ import { attachImageUrls, buildBatchPrompt, normalizeProviderResults, parseJsonF
 
 const PROVIDER = "gemini";
 
-export async function runGeminiAgent({ description, batches, emit }) {
+export async function runGeminiAgent({ description, batches, emit, signal }) {
   const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
   const apiKey = process.env.GEMINI_API_KEY;
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -14,6 +14,7 @@ export async function runGeminiAgent({ description, batches, emit }) {
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY.");
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    throwIfAborted(signal);
     const batch = batches[batchIndex];
     const prompt = buildBatchPrompt({ description, images: batch, batchIndex, batchCount: batches.length });
     const body = {
@@ -57,6 +58,7 @@ export async function runGeminiAgent({ description, batches, emit }) {
       const batchStarted = performance.now();
       const response = await fetch(apiUrl, {
         method: "POST",
+        signal,
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey
@@ -97,6 +99,7 @@ export async function runGeminiAgent({ description, batches, emit }) {
         usage: json.usageMetadata || null
       });
     } catch (error) {
+      throwIfAborted(signal);
       emit("error", {
         provider: PROVIDER,
         batch: batchIndex + 1,
@@ -124,6 +127,10 @@ export async function runGeminiAgent({ description, batches, emit }) {
     ...normalized
   });
   return { provider: PROVIDER, status: "complete", totalLatencyMs, model, ...normalized };
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new Error("Run canceled.");
 }
 
 function renderGeminiCurl({ model, imageCount, description }) {

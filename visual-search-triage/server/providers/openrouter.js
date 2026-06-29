@@ -5,7 +5,7 @@ const PROVIDER = "openrouter";
 const PANEL_PROVIDER = "gemini";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-export async function runOpenRouterAgent({ description, batches, emit }) {
+export async function runOpenRouterAgent({ description, batches, emit, signal }) {
   const model = process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free";
   const apiKey = process.env.OPENROUTER_API_KEY;
   const startedAt = performance.now();
@@ -15,6 +15,7 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
   if (!apiKey) throw new Error("Missing OPENROUTER_API_KEY.");
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    throwIfAborted(signal);
     const batch = batches[batchIndex];
     const prompt = buildBatchPrompt({ description, images: batch, batchIndex, batchCount: batches.length });
     const body = {
@@ -58,6 +59,7 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
       const batchStarted = performance.now();
       const response = await fetch(API_URL, {
         method: "POST",
+        signal,
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
@@ -104,6 +106,7 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
         usage: json.usage || null
       });
     } catch (error) {
+      throwIfAborted(signal);
       emit("error", {
         provider: PROVIDER,
         panelProvider: PANEL_PROVIDER,
@@ -135,6 +138,10 @@ export async function runOpenRouterAgent({ description, batches, emit }) {
     ...normalized
   });
   return { provider: PROVIDER, panelProvider: PANEL_PROVIDER, status: "complete", totalLatencyMs, model, providerRoute: PROVIDER, ...normalized };
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new Error("Run canceled.");
 }
 
 function renderOpenRouterCurl({ model, imageCount, description }) {

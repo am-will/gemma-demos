@@ -1,7 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
+  X,
   FolderOpen,
   Image as ImageIcon,
 } from "lucide-react";
@@ -81,6 +84,8 @@ function App() {
   const [health, setHealth] = useState(null);
   const selectedFilesRef = useRef([]);
   const previewUrlsRef = useRef([]);
+  const activeRunRef = useRef(null);
+  const eventSourceRef = useRef(null);
   const [fileSummary, setFileSummary] = useState({ count: 0, folderName: "", previews: [] });
   const [folderDragActive, setFolderDragActive] = useState(false);
   const [description, setDescription] = useState("");
@@ -90,7 +95,9 @@ function App() {
   const [results, setResults] = useState({ gemini: null, cerebras: null });
   const [winnerProvider, setWinnerProvider] = useState(null);
   const leftProvider = "openrouter";
-  const [runStartedAt, setRunStartedAt] = useState(null);
+  const [providerStartedAt, setProviderStartedAt] = useState({});
+  const [frozenElapsedMs, setFrozenElapsedMs] = useState({});
+  const [previewState, setPreviewState] = useState(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -107,6 +114,17 @@ function App() {
     const timer = window.setInterval(() => setNow(Date.now()), 47);
     return () => window.clearInterval(timer);
   }, [running]);
+
+  useEffect(() => {
+    if (!previewState) return undefined;
+    function handleKeyDown(event) {
+      if (event.key === "Escape") setPreviewState(null);
+      if (event.key === "ArrowLeft") stepPreview(-1);
+      if (event.key === "ArrowRight") stepPreview(1);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewState]);
 
   function applySelectedFiles(files) {
     setError("");
@@ -172,9 +190,10 @@ function App() {
     setEvents([]);
     setResults({ gemini: null, cerebras: null });
     setWinnerProvider(null);
+    setProviderStartedAt({});
+    setFrozenElapsedMs({});
     setRunning(true);
     const startedAt = Date.now();
-    setRunStartedAt(startedAt);
     setNow(startedAt);
 
     try {
@@ -186,11 +205,23 @@ function App() {
       const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
 
+      activeRunRef.current = data.runId;
       const source = new EventSource(`/api/runs/${data.runId}/events`);
+      eventSourceRef.current = source;
       ["trace", "metric", "partial_result", "provider_done", "run_done", "error"].forEach((type) => {
         source.addEventListener(type, (event) => {
           const payload = JSON.parse(event.data);
           setEvents((current) => [...current, payload]);
+          if (type === "trace" && payload.phase === "dispatch") {
+            const resultKey = payload.panelProvider || payload.provider;
+            if (resultKey in results) {
+              setProviderStartedAt((current) => current[resultKey] ? current : { ...current, [resultKey]: Date.now() });
+            }
+          }
+          if (type === "partial_result") {
+            const resultKey = payload.panelProvider || payload.provider;
+            setResults((current) => ({ ...current, [resultKey]: mergePartialResult(current[resultKey], payload) }));
+          }
           if (type === "provider_done") {
             const resultKey = payload.panelProvider || payload.provider;
             setResults((current) => ({ ...current, [resultKey]: payload }));
@@ -200,6 +231,8 @@ function App() {
           }
           if (type === "run_done") {
             setRunning(false);
+            activeRunRef.current = null;
+            eventSourceRef.current = null;
             source.close();
           }
           if (type === "error") {
@@ -211,12 +244,54 @@ function App() {
       source.onerror = () => {
         setEvents((current) => [...current, { type: "error", at: new Date().toISOString(), provider: "system", message: "Trace stream disconnected." }]);
         setRunning(false);
+        activeRunRef.current = null;
+        eventSourceRef.current = null;
         source.close();
       };
     } catch (err) {
       setError(err.message);
       setRunning(false);
+      activeRunRef.current = null;
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
     }
+  }
+
+  async function stopRun() {
+    const runId = activeRunRef.current;
+    activeRunRef.current = null;
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    const stoppedAt = Date.now();
+    setFrozenElapsedMs(Object.fromEntries(PANEL_PROVIDERS.map((provider) => [
+      provider,
+      providerStartedAt[provider] ? Math.max(0, stoppedAt - providerStartedAt[provider]) : null
+    ])));
+    setRunning(false);
+    setEvents((current) => [...current, { type: "trace", at: new Date().toISOString(), provider: "system", phase: "cancel", message: "Stop requested. Canceling active provider calls." }]);
+
+    if (!runId) return;
+    try {
+      const response = await fetch(`/api/runs/${runId}/cancel`, { method: "POST" });
+      if (!response.ok) {
+        const data = await readJsonResponse(response);
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+    } catch (err) {
+      setError(err.message || "Could not stop run.");
+    }
+  }
+
+  function openPreview(provider, matches, index) {
+    setPreviewState({ provider, matches, index });
+  }
+
+  function stepPreview(direction) {
+    setPreviewState((current) => {
+      if (!current?.matches?.length) return current;
+      const nextIndex = (current.index + direction + current.matches.length) % current.matches.length;
+      return { ...current, index: nextIndex };
+    });
   }
 
   const imageCount = fileSummary.count;
@@ -264,8 +339,8 @@ function App() {
             />
           </div>
 
-          <button className="primary-button" disabled={!canStart} onClick={startRun}>
-            Start image search
+          <button className={`primary-button ${running ? "stop-button" : ""}`} disabled={!running && !canStart} onClick={running ? stopRun : startRun}>
+            {running ? "Stop image search" : "Start image search"}
           </button>
           {error ? <div className="error-pill"><CircleAlert size={16} /> {error}</div> : null}
         </div>
@@ -284,11 +359,14 @@ function App() {
             onMatchWheel={handlePreviewWheel}
             running={running}
             winnerProvider={winnerProvider}
-            runStartedAt={runStartedAt}
+            providerStartedAt={providerStartedAt[provider]}
+            frozenElapsedMs={frozenElapsedMs[provider]}
+            onPreviewMatch={openPreview}
             now={now}
           />
         ))}
       </section>
+      <ImagePreviewModal previewState={previewState} onClose={() => setPreviewState(null)} onStep={stepPreview} />
       <footer className="brand-footer"><img src="/assets/cerebras-wordmark.png" alt="Cerebras" /></footer>
     </main>
   );
@@ -351,7 +429,31 @@ function isSuccessfulCompletion(payload) {
   return payload.batches.some((batch) => !batch.error);
 }
 
-function AgentPanel({ provider, activeProvider, health, events, result, referenceMatches, onMatchWheel, running, winnerProvider, runStartedAt, now }) {
+function mergePartialResult(currentResult, payload) {
+  if (currentResult?.status === "complete") return currentResult;
+
+  const matchesByFile = new Map();
+  for (const match of currentResult?.matches || []) {
+    matchesByFile.set(String(match.filename || ""), match);
+  }
+  for (const match of payload.matches || []) {
+    matchesByFile.set(String(match.filename || ""), match);
+  }
+
+  return {
+    ...currentResult,
+    provider: payload.provider,
+    panelProvider: payload.panelProvider,
+    providerRoute: payload.providerRoute,
+    status: "running",
+    partial: true,
+    batchesSeen: payload.batch,
+    lastLatencyMs: payload.latencyMs,
+    matches: Array.from(matchesByFile.values())
+  };
+}
+
+function AgentPanel({ provider, activeProvider, health, events, result, referenceMatches, onMatchWheel, running, winnerProvider, providerStartedAt, frozenElapsedMs, onPreviewMatch, now }) {
   const config = PROVIDERS[activeProvider];
   const matches = sortMatchesForDisplay(result?.matches || [], referenceMatches);
   const status = result?.status || (running ? "running" : "idle");
@@ -359,7 +461,7 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
   const isWinner = winnerProvider === provider;
   const isLoser = Boolean(winnerProvider && finished && !isWinner);
   const isCerebras = provider === "cerebras";
-  const elapsedMs = finished ? result.totalLatencyMs : running && runStartedAt ? now - runStartedAt : null;
+  const elapsedMs = finished ? result.totalLatencyMs : running && providerStartedAt ? now - providerStartedAt : frozenElapsedMs ?? null;
 
   // The Cerebras panel celebrates the moment its timer lands. We mount the
   // overlay only for the duration of the animation so nothing keeps spinning
@@ -394,15 +496,15 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
         {matches.length ? (
           <div className="match-strip-shell">
             <div className="match-strip" onWheel={onMatchWheel} aria-label={`${config.name} matches`}>
-              {matches.map((match) => (
-                <figure className="match-tile" key={`${provider}-${match.filename}`} title={shortMatchDescription(match)}>
+              {matches.map((match, index) => (
+                <button className="match-tile" type="button" key={`${provider}-${match.filename}`} title={shortMatchDescription(match)} onClick={() => onPreviewMatch(provider, matches, index)}>
                   {match.imageUrl ? (
                     <img src={match.imageUrl} alt="" />
                   ) : (
                     <div className="match-thumb placeholder"><ImageIcon size={24} /></div>
                   )}
-                  <figcaption>{fileExtension(match.filename)}</figcaption>
-                </figure>
+                  <span>{fileExtension(match.filename)}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -427,6 +529,32 @@ function CerebrasCelebration() {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+function ImagePreviewModal({ previewState, onClose, onStep }) {
+  if (!previewState?.matches?.length) return null;
+
+  const match = previewState.matches[previewState.index];
+  const label = `${previewState.index + 1} / ${previewState.matches.length}`;
+  const description = shortMatchDescription(match);
+
+  return (
+    <div className="preview-backdrop" role="dialog" aria-modal="true" aria-label="Image preview" onMouseDown={onClose}>
+      <div className={`preview-frame ${previewState.provider === "cerebras" ? "cerebras" : "gpu"}`} onMouseDown={(event) => event.stopPropagation()}>
+        <button className="preview-close" type="button" onClick={onClose} aria-label="Close preview"><X size={22} /></button>
+        <button className="preview-arrow previous" type="button" onClick={() => onStep(-1)} aria-label="Previous image"><ChevronLeft size={34} /></button>
+        <div className="preview-image-wrap">
+          {match.imageUrl ? <img src={match.imageUrl} alt="" /> : <div className="preview-placeholder"><ImageIcon size={44} /></div>}
+        </div>
+        <button className="preview-arrow next" type="button" onClick={() => onStep(1)} aria-label="Next image"><ChevronRight size={34} /></button>
+        <div className="preview-meta">
+          <strong>{match.filename || "Image"}</strong>
+          <span>{label}</span>
+          {description ? <p>{description}</p> : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -492,10 +620,12 @@ function TraceWindow({ events, compact = false }) {
 
 function formatTraceMessage(event) {
   const raw = event.message || summarizeEvent(event);
-  if ((event.panelProvider || event.provider) !== "gemini") return raw;
-  return String(raw)
+  const displayText = String(raw).replaceAll("-trial", "");
+  if ((event.panelProvider || event.provider) !== "gemini") return displayText;
+  return displayText
     .replaceAll("OpenRouter", "GPU")
     .replaceAll("openrouter", "gpu")
+    .replaceAll(":free", "")
     .replaceAll("api.openrouter.ai", "gpu.endpoint")
     .replaceAll("$OPENROUTER_API_KEY", "$GPU_API_KEY");
 }
