@@ -337,6 +337,13 @@ h1 {
   font-size: clamp(1.2rem, 2vw, 2.5rem);
   line-height: 1;
   text-align: center;
+  transition: opacity 240ms ease;
+}
+
+/* While the showcase owns the timers, the small in-card source hides so the
+   big flying pill is the only copy on screen. */
+.agent-card.lifting .completion-time {
+  opacity: 0;
 }
 
 .agent-card.finished .completion-time {
@@ -344,7 +351,7 @@ h1 {
 }
 
 .agent-card.finished.winner .completion-time {
-  box-shadow: 0 0 0 0.25rem rgba(85, 230, 165, 0.34), 0 0 1.4rem rgba(85, 230, 165, 0.5);
+  box-shadow: 0 0 0 0.25rem rgba(241, 90, 41, 0.45), 0 0 1.4rem rgba(241, 90, 41, 0.55);
 }
 
 .agent-card.cerebras .completion-time {
@@ -914,6 +921,196 @@ h1 {
 }
 
 
+/* ---------- Final-time showcase ---------- */
+.timer-showcase {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vw, 5rem);
+}
+
+.timer-showcase::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(125% 125% at 50% 36%, rgba(38, 31, 27, 0.58), rgba(11, 9, 8, 0.84));
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  backdrop-filter: blur(14px) saturate(1.05);
+  animation: showcase-fade-in 520ms ease both;
+}
+
+.timer-showcase-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: clamp(1.3rem, 3vw, 2.6rem);
+  width: 100%;
+}
+
+.showcase-eyebrow {
+  opacity: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(0.85rem, 1.5vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  animation: showcase-rise 560ms ease 220ms both;
+}
+
+.showcase-pillrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(1.4rem, 4.5vw, 4.5rem);
+  width: 100%;
+}
+
+.showcase-slot {
+  display: grid;
+  justify-items: center;
+  gap: clamp(0.6rem, 1.4vw, 1.25rem);
+}
+
+.showcase-label {
+  opacity: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(1.4rem, 2.9vw, 2.85rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  animation: showcase-rise 520ms ease 900ms both;
+}
+
+.showcase-slot.cerebras .showcase-label {
+  color: #ffd9c9;
+}
+
+.showcase-slot.gemini .showcase-label {
+  color: #e7e7e7;
+}
+
+.showcase-pill {
+  display: grid;
+  place-items: center;
+  min-width: clamp(9rem, 20vw, 16rem);
+  padding: clamp(0.9rem, 1.9vw, 1.7rem) clamp(1.4rem, 2.8vw, 2.6rem);
+  border-radius: 1.5rem;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2.4rem, 5.6vw, 5rem);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  will-change: transform;
+}
+
+.showcase-slot.cerebras .showcase-pill {
+  color: var(--cerebras);
+  background: #ffffff;
+  box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, 0.45);
+}
+
+.showcase-slot.gemini .showcase-pill {
+  color: #ffffff;
+  background: #8a8a8a;
+  box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, 0.45);
+}
+
+/* The faster side blooms an orange halo once it lands, after the flight ends. */
+.showcase-slot.is-faster .showcase-pill {
+  animation: showcase-winner-glow 720ms ease 980ms both;
+}
+
+.showcase-verdict {
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: clamp(0.55rem, 1.2vw, 1rem) clamp(1.3rem, 2.6vw, 2.4rem);
+  border-radius: 999px;
+  color: #ffffff;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(1.1rem, 2.2vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1;
+  animation:
+    showcase-pop 640ms cubic-bezier(0.34, 1.56, 0.64, 1) 1150ms both,
+    showcase-verdict-pulse 2.6s ease-in-out 1950ms infinite;
+}
+
+.showcase-verdict strong {
+  font-size: 1.3em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.showcase-verdict.cerebras {
+  background: linear-gradient(135deg, #f15a29, #ff8a5c);
+  box-shadow: 0 0.6rem 2.4rem rgba(241, 90, 41, 0.5);
+}
+
+.showcase-verdict.gemini {
+  background: linear-gradient(135deg, #7d7d7d, #9a9a9a);
+  box-shadow: 0 0.6rem 2.4rem rgba(0, 0, 0, 0.4);
+}
+
+@keyframes showcase-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes showcase-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes showcase-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes showcase-verdict-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+@keyframes showcase-winner-glow {
+  from {
+    box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, 0.45);
+  }
+  to {
+    box-shadow:
+      0 0 0 0.35rem rgba(241, 90, 41, 0.6),
+      0 0 3.5rem rgba(241, 90, 41, 0.6),
+      0 1.6rem 4rem rgba(0, 0, 0, 0.45);
+  }
+}
+
 @media (max-width: 1100px) {
   .hero,
   .agents-grid {
@@ -978,5 +1175,13 @@ h1 {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
+  }
+
+  /* Without their entrance animations these would stay at opacity 0, so pin
+     them visible and let the showcase appear as a static final frame. */
+  .showcase-eyebrow,
+  .showcase-label,
+  .showcase-verdict {
+    opacity: 1;
   }
 }

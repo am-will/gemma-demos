@@ -99,6 +99,12 @@ function App() {
   const [frozenElapsedMs, setFrozenElapsedMs] = useState({});
   const [previewState, setPreviewState] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const [showcase, setShowcase] = useState(false);
+  const [showcaseDismissed, setShowcaseDismissed] = useState(false);
+
+  const cerebrasFinalMs = Number.isFinite(results.cerebras?.totalLatencyMs) ? results.cerebras.totalLatencyMs : null;
+  const geminiFinalMs = Number.isFinite(results.gemini?.totalLatencyMs) ? results.gemini.totalLatencyMs : null;
+  const bothFinished = cerebrasFinalMs !== null && geminiFinalMs !== null;
 
   useEffect(() => {
     fetch("/api/health")
@@ -125,6 +131,18 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewState]);
+
+  // Once both timers have landed, hold a beat, then promote them into the
+  // full-screen showcase so the side-by-side gap becomes the thing on screen.
+  useEffect(() => {
+    if (!bothFinished) {
+      setShowcase(false);
+      return undefined;
+    }
+    if (showcaseDismissed) return undefined;
+    const timer = window.setTimeout(() => setShowcase(true), 850);
+    return () => window.clearTimeout(timer);
+  }, [bothFinished, showcaseDismissed]);
 
   function applySelectedFiles(files) {
     setError("");
@@ -190,6 +208,8 @@ function App() {
     setEvents([]);
     setResults({ gemini: null, cerebras: null });
     setWinnerProvider(null);
+    setShowcase(false);
+    setShowcaseDismissed(false);
     setProviderStartedAt({});
     setFrozenElapsedMs({});
     setRunning(true);
@@ -366,10 +386,20 @@ function App() {
             frozenElapsedMs={frozenElapsedMs[provider]}
             onPreviewMatch={openPreview}
             now={now}
+            lifting={showcase}
           />
         ))}
       </section>
       <ImagePreviewModal previewState={previewState} onClose={() => setPreviewState(null)} onStep={stepPreview} />
+      <TimerShowcase
+        active={showcase}
+        cerebrasMs={cerebrasFinalMs}
+        geminiMs={geminiFinalMs}
+        onDismiss={() => {
+          setShowcase(false);
+          setShowcaseDismissed(true);
+        }}
+      />
       <footer className="brand-footer"><img src="/assets/cerebras-wordmark.png" alt="Cerebras" /></footer>
     </main>
   );
@@ -456,7 +486,7 @@ function mergePartialResult(currentResult, payload) {
   };
 }
 
-function AgentPanel({ provider, activeProvider, health, events, result, referenceMatches, onMatchWheel, running, winnerProvider, providerStartedAt, frozenElapsedMs, onPreviewMatch, now }) {
+function AgentPanel({ provider, activeProvider, health, events, result, referenceMatches, onMatchWheel, running, winnerProvider, providerStartedAt, frozenElapsedMs, onPreviewMatch, now, lifting }) {
   const config = PROVIDERS[activeProvider];
   const matches = capDisplayedMatches(provider, sortMatchesForDisplay(result?.matches || [], referenceMatches));
   const status = result?.status || (running ? "running" : "idle");
@@ -481,12 +511,12 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
   }, [isCerebras, finished]);
 
   return (
-    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""}`}>
+    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""} ${lifting ? "lifting" : ""}`}>
       {celebrate ? <CerebrasCelebration /> : null}
       <div className="agent-top">
         <header>
           <h2>{config.name}</h2>
-          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
+          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`} data-timer={provider}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
         </header>
 
         <TraceWindow events={events} />
@@ -535,6 +565,86 @@ function CerebrasCelebration() {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// After both agents finish, the two timers fly out of their card headers and
+// land enlarged, side by side, over a dimmed backdrop. The motion is a FLIP:
+// each big pill is rendered at its centered home, then a Web Animations API
+// tween plays it from the small in-card timer's position and scale up to that
+// home, so it reads as the timer itself lifting off the card and growing.
+function TimerShowcase({ active, cerebrasMs, geminiMs, onDismiss }) {
+  const pillRefs = useRef({});
+
+  useEffect(() => {
+    if (!active) return undefined;
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onDismiss();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [active, onDismiss]);
+
+  useLayoutEffect(() => {
+    if (!active) return undefined;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return undefined;
+    const animations = [];
+    ["cerebras", "gemini"].forEach((provider, index) => {
+      const pill = pillRefs.current[provider];
+      const source = document.querySelector(`[data-timer="${provider}"]`);
+      if (!pill || !source) return;
+      const from = source.getBoundingClientRect();
+      const to = pill.getBoundingClientRect();
+      const scale = to.height ? from.height / to.height : 1;
+      const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+      const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+      animations.push(pill.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${scale})` },
+          { transform: "translate(0px, 0px) scale(1)" }
+        ],
+        { duration: 940, delay: index * 70, easing: "cubic-bezier(0.2, 0.86, 0.24, 1)", fill: "backwards" }
+      ));
+    });
+    return () => {
+      for (const animation of animations) animation.cancel();
+    };
+  }, [active, cerebrasMs, geminiMs]);
+
+  if (!active) return null;
+
+  const slots = [
+    { provider: "cerebras", label: "Cerebras", ms: cerebrasMs },
+    { provider: "gemini", label: "GPUs", ms: geminiMs }
+  ];
+  const cMs = Number.isFinite(cerebrasMs) ? cerebrasMs : Infinity;
+  const gMs = Number.isFinite(geminiMs) ? geminiMs : Infinity;
+  const faster = cMs <= gMs ? "cerebras" : "gemini";
+  const fast = Math.min(cMs, gMs);
+  const slow = Math.max(cMs, gMs);
+  const ratio = fast > 0 && Number.isFinite(slow) ? slow / fast : null;
+
+  return (
+    <div className="timer-showcase" role="dialog" aria-label="Final times" onMouseDown={onDismiss}>
+      <div className="timer-showcase-inner" onMouseDown={(event) => event.stopPropagation()}>
+        <span className="showcase-eyebrow">Final time</span>
+        <div className="showcase-pillrow">
+          {slots.map((slot) => (
+            <div className={`showcase-slot ${slot.provider} ${slot.provider === faster ? "is-faster" : "is-slower"}`} key={slot.provider}>
+              <span className="showcase-label">{slot.label}</span>
+              <div className="showcase-pill" ref={(el) => { pillRefs.current[slot.provider] = el; }}>
+                {formatTimer(Number.isFinite(slot.ms) ? slot.ms : 0)}
+              </div>
+            </div>
+          ))}
+        </div>
+        {ratio && ratio >= 1.05 ? (
+          <div className={`showcase-verdict ${faster}`}>
+            <strong>{formatRatio(ratio)}&times;</strong> faster
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -602,6 +712,11 @@ function formatTimer(ms) {
   const seconds = Math.floor((safeMs % 60000) / 1000);
   const milliseconds = safeMs % 1000;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
+}
+
+function formatRatio(ratio) {
+  if (!Number.isFinite(ratio)) return "";
+  return ratio >= 10 ? String(Math.round(ratio)) : ratio.toFixed(1);
 }
 
 function TraceWindow({ events, compact = false }) {
