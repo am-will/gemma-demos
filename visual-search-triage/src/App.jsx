@@ -335,6 +335,9 @@ function App() {
               id="description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && canStart) startRun();
+              }}
               placeholder="Prompt"
             />
           </div>
@@ -455,7 +458,7 @@ function mergePartialResult(currentResult, payload) {
 
 function AgentPanel({ provider, activeProvider, health, events, result, referenceMatches, onMatchWheel, running, winnerProvider, providerStartedAt, frozenElapsedMs, onPreviewMatch, now }) {
   const config = PROVIDERS[activeProvider];
-  const matches = sortMatchesForDisplay(result?.matches || [], referenceMatches);
+  const matches = capDisplayedMatches(provider, sortMatchesForDisplay(result?.matches || [], referenceMatches));
   const status = result?.status || (running ? "running" : "idle");
   const finished = Boolean(result?.totalLatencyMs);
   const isWinner = winnerProvider === provider;
@@ -490,7 +493,10 @@ function AgentPanel({ provider, activeProvider, health, events, result, referenc
       </div>
 
       <div className="results-box">
-        <h3>{matches.length} Matches</h3>
+        <div className="results-heading">
+          <h3>{matches.length} Matches</h3>
+          {finished ? <span className="done-badge">Done</span> : null}
+        </div>
         {result?.error ? <div className="panel-error">{result.error}</div> : null}
         {!result?.error && !matches.length ? <p className="empty-state">No matches returned yet.</p> : null}
         {matches.length ? (
@@ -572,6 +578,10 @@ function sortMatchesForDisplay(matches, referenceMatches = []) {
     if (bHasReference) return 1;
     return Number(a.rank || 0) - Number(b.rank || 0);
   });
+}
+
+function capDisplayedMatches(provider, matches) {
+  return provider === "gemini" ? matches.slice(0, 10) : matches;
 }
 
 function shortMatchDescription(match) {
