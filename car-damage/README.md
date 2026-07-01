@@ -18,7 +18,7 @@ Put your key in `.env`:
 
 ```bash
 CEREBRAS_API_KEY=...
-CEREBRAS_MODEL=gemma-4-31b-trial
+CEREBRAS_MODEL=gemma-4-31b
 OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=google/gemma-4-31b-it
 PORT=8787

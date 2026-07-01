@@ -80,7 +80,7 @@ function App() {
         if (data.result?.providers) {
           setResults((current) => ({ ...current, ...data.result.providers }));
         }
-        if (["complete", "failed"].includes(data.status)) clearInterval(interval);
+        if (["complete", "failed", "cancelled"].includes(data.status)) clearInterval(interval);
       } catch (pollError) {
         setError(pollError.message);
       }
@@ -99,6 +99,7 @@ function App() {
   const uploadingOrExtracting = job && ["uploading", "queued", "processing"].includes(job.status);
   const inspecting = job?.status === "inspecting";
   const canRun = Boolean(jobId && extractionReady && !inspecting);
+  const canStop = Boolean(jobId && inspecting);
   const extractionProgress = getExtractionProgress(job);
   const previewRevealProgress = file && isPreviewJob(job) ? extractionProgress : 0;
   const extractionPercent = Math.round(previewRevealProgress * 100);
@@ -159,6 +160,23 @@ function App() {
     }
   }
 
+  async function stopInspection() {
+    if (!canStop) return;
+    setError("");
+    try {
+      await cancelAnalysis(jobId);
+      eventSourceRef.current?.close();
+      setJob((current) => ({
+        ...current,
+        status: "cancelled",
+        message: "Inspection stopped."
+      }));
+    } catch (cancelError) {
+      const message = cancelError instanceof Error ? cancelError.message : "Stop failed";
+      setError(message);
+    }
+  }
+
   function openEventStream(nextJobId) {
     eventSourceRef.current?.close();
     const source = new EventSource(`${api}/api/jobs/${nextJobId}/events`);
@@ -177,6 +195,9 @@ function App() {
           setResults((current) => payload.provider in current ? { ...current, [payload.provider]: { provider: payload.provider, status: "failed", error: payload.message } } : current);
         }
         if (type === "run_done") {
+          if (payload.status === "cancelled") {
+            setJob((current) => ({ ...current, status: "cancelled", message: "Inspection stopped." }));
+          }
           source.close();
         }
       });
@@ -255,8 +276,8 @@ function App() {
             <input ref={inputRef} id="video-input" className="hidden-input" type="file" accept="video/*" onChange={handleFileChange} />
           </div>
 
-          <button className={`primary-button ${extractionReady ? "ready" : ""}`} disabled={!canRun} onClick={startInspection} type="button">
-            {inspecting ? "Checking for damage" : extractionReady ? "Check for damage" : uploadingOrExtracting ? "Preparing frames" : "Upload video first"}
+          <button className={`primary-button ${extractionReady ? "ready" : ""} ${canStop ? "stopping" : ""}`} disabled={!canRun && !canStop} onClick={canStop ? stopInspection : startInspection} type="button">
+            {canStop ? "Stop" : extractionReady ? "Check for damage" : uploadingOrExtracting ? "Preparing frames" : "Upload video first"}
           </button>
           {error ? <div className="error-pill"><AlertTriangle size={16} /> {error}</div> : null}
         </div>
@@ -434,6 +455,11 @@ function uploadAnalysis(form, onUploadProgress) {
 
 async function continueAnalysis(jobId) {
   const response = await fetch(`${api}/api/jobs/${jobId}/inspect`, { method: "POST" });
+  return readJsonResponse(response);
+}
+
+async function cancelAnalysis(jobId) {
+  const response = await fetch(`${api}/api/jobs/${jobId}/cancel`, { method: "POST" });
   return readJsonResponse(response);
 }
 

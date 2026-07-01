@@ -20,7 +20,7 @@ const uploadsDir = path.join(runtimeDir, "uploads");
 const tmpDir = path.join(runtimeDir, "tmp");
 const outputsDir = path.join(rootDir, "outputs", "jobs");
 const distDir = path.join(rootDir, "dist");
-const cerebrasModel = process.env.CEREBRAS_MODEL || "gemma-4-31b-trial";
+const cerebrasModel = process.env.CEREBRAS_MODEL || "gemma-4-31b";
 const openRouterModel = process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free";
 const port = Number(process.env.PORT || 8787);
 const extractionMaxWidth = Number(process.env.FRAME_EXTRACTION_MAX_WIDTH || 1920);
@@ -161,11 +161,29 @@ app.post("/api/jobs/:jobId/inspect", async (req, res) => {
   job.inspectionStarted = true;
   res.status(202).json({ jobId: job.id });
   continueInspectionJob(job).catch((error) => {
+    if (job.status === "cancelled" || error?.name === "AbortError") {
+      cancelJob(job);
+      return;
+    }
     job.status = "failed";
     job.error = error instanceof Error ? error.message : String(error);
     job.message = "Analysis failed";
     failActivePipelineStep(job, job.error);
   });
+});
+
+app.post("/api/jobs/:jobId/cancel", async (req, res) => {
+  const job = await getJob(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: "Unknown job" });
+    return;
+  }
+  if (!["queued", "processing", "extracted", "inspecting"].includes(job.status)) {
+    res.status(409).json({ error: `Job is ${job.status}; it cannot be cancelled.` });
+    return;
+  }
+  cancelJob(job);
+  res.status(202).json({ jobId: job.id, status: job.status });
 });
 
 app.get("/api/jobs/:jobId/events", async (req, res) => {
@@ -198,7 +216,7 @@ app.get("/api/jobs/:jobId", async (req, res) => {
     res.status(404).json({ error: "Unknown job" });
     return;
   }
-  const { internal: _internal, subscribers: _subscribers, events: _events, ...publicJob } = job;
+  const { internal: _internal, subscribers: _subscribers, events: _events, abortControllers: _abortControllers, ...publicJob } = job;
   res.json(publicJob);
 });
 
@@ -286,6 +304,8 @@ async function continueInspectionJob(job) {
     throw new Error("Extracted frame data is missing. Upload the video again.");
   }
 
+  ensureNotCancelled(job);
+  job.abortControllers = new Set();
   job.status = "inspecting";
   job.progress = 20;
   job.message = `Running ${providerOrder.length} damage agents side by side`;
@@ -301,6 +321,7 @@ async function continueInspectionJob(job) {
     frameFiles,
     extraction
   })));
+  if (job.status === "cancelled") return;
   const providerResults = {};
   settledRuns.forEach((settled, index) => {
     const provider = providers[providerOrder[index]];
@@ -366,6 +387,48 @@ async function getJob(jobId) {
     maybeResumeExtractionJob(hydrated);
   }
   return hydrated;
+}
+
+function cancelJob(job) {
+  if (!job) return;
+  const alreadyCancelled = job.status === "cancelled";
+  job.cancelRequested = true;
+  job.status = "cancelled";
+  job.progress = Math.max(0, job.progress || 0);
+  job.message = "Inspection stopped.";
+  job.error = null;
+  for (const controller of job.abortControllers || []) controller.abort();
+  job.abortControllers?.clear();
+  for (const run of Object.values(job.providerRuns || {})) {
+    if (["running", "idle"].includes(run.status)) {
+      run.status = "cancelled";
+      run.message = "Stopped";
+      run.error = null;
+    }
+  }
+  if (!alreadyCancelled) {
+    emitJobEvent(job, "run_done", { status: "cancelled", providers: job.partialProviderResults || {} });
+  }
+  persistJobState(job).catch(() => {});
+}
+
+function ensureNotCancelled(job) {
+  if (job?.cancelRequested || job?.status === "cancelled") {
+    const error = new Error("Inspection stopped.");
+    error.name = "AbortError";
+    throw error;
+  }
+}
+
+function createJobAbortSignal(job) {
+  ensureNotCancelled(job);
+  const controller = new AbortController();
+  job.abortControllers = job.abortControllers || new Set();
+  job.abortControllers.add(controller);
+  return {
+    signal: controller.signal,
+    release: () => job.abortControllers?.delete(controller)
+  };
 }
 
 async function hydrateJobFromDisk(jobId) {
@@ -514,7 +577,8 @@ async function runDamageProvider({ job, provider, originalName, jobOut, framesDi
   });
   if (!provider.hasKey()) throw new Error(`Missing ${provider.keyEnv}.`);
 
-  await preflightProvider(provider, path.join(framesDir, frameFiles[0]), (type, payload) => emitJobEvent(job, type, payload));
+  ensureNotCancelled(job);
+  await preflightProvider(job, provider, path.join(framesDir, frameFiles[0]), (type, payload) => emitJobEvent(job, type, payload));
 
   setProviderStep(job, provider.id, "inspect", "active", `0 of ${frameFiles.length} frames inspected`, { progress: 0 });
   emitJobEvent(job, "trace", {
@@ -542,6 +606,7 @@ async function runDamageProvider({ job, provider, originalName, jobOut, framesDi
     });
   };
   const frameFindings = await inspectFramesWithBatches(
+    job,
     provider,
     frameFiles,
     framesDir,
@@ -1214,7 +1279,7 @@ Frame ${frameNumber} of ${totalFrames}.`;
   return tileResults.flat();
 }
 
-async function inspectFramesWithBatches(provider, frameFiles, framesDir, _tileConcurrency, onProgress, emit) {
+async function inspectFramesWithBatches(job, provider, frameFiles, framesDir, _tileConcurrency, onProgress, emit) {
   const batches = chunkArray(frameFiles, frameBatchSize);
   const frameFindings = [];
   let completed = 0;
@@ -1225,6 +1290,7 @@ async function inspectFramesWithBatches(provider, frameFiles, framesDir, _tileCo
   });
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    ensureNotCancelled(job);
     const batchFiles = batches[batchIndex];
     const frames = await Promise.all(batchFiles.map(async (filename) => {
       const frameNumber = frameFiles.indexOf(filename) + 1;
@@ -1248,7 +1314,7 @@ async function inspectFramesWithBatches(provider, frameFiles, framesDir, _tileCo
       phase: "dispatch",
       message: `POST ${provider.apiHostLabel} batch ${batchIndex + 1}/${batches.length} with ${frames.length} frames`
     });
-    const batchResults = await inspectFrameBatchWithProvider(provider, frames, batchIndex + 1, batches.length, frameFiles.length);
+    const batchResults = await inspectFrameBatchWithProvider(job, provider, frames, batchIndex + 1, batches.length, frameFiles.length);
     frameFindings.push(...batchResults);
     completed += frames.length;
     onProgress(completed, frameFiles.length);
@@ -1257,7 +1323,7 @@ async function inspectFramesWithBatches(provider, frameFiles, framesDir, _tileCo
   return frameFindings.sort((a, b) => a.frameNumber - b.frameNumber);
 }
 
-async function inspectFrameBatchWithProvider(provider, frames, batchNumber, batchCount, totalFrames) {
+async function inspectFrameBatchWithProvider(job, provider, frames, batchNumber, batchCount, totalFrames) {
   const prompt = buildBatchDamagePrompt(frames, batchNumber, batchCount, totalFrames);
   const payload = {
     model: provider.model,
@@ -1283,20 +1349,27 @@ async function inspectFrameBatchWithProvider(provider, frames, batchNumber, batc
     payload.max_completion_tokens = maxCompletionTokens;
   }
 
-  const response = await fetch(provider.apiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env[provider.keyEnv]}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "damage-scout-demo/0.1",
-      ...(provider.actualProvider === "openrouter" ? {
-        "HTTP-Referer": "http://127.0.0.1:5173",
-        "X-Title": "Damage Scout"
-      } : {})
-    },
-    body: JSON.stringify(payload)
-  });
+  const request = createJobAbortSignal(job);
+  let response;
+  try {
+    response = await fetch(provider.apiUrl, {
+      method: "POST",
+      signal: request.signal,
+      headers: {
+        Authorization: `Bearer ${process.env[provider.keyEnv]}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "damage-scout-demo/0.1",
+        ...(provider.actualProvider === "openrouter" ? {
+          "HTTP-Referer": "http://127.0.0.1:5174",
+          "X-Title": "Damage Scout"
+        } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+  } finally {
+    request.release();
+  }
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -1403,7 +1476,7 @@ async function inspectImageWithPrompt(provider, base64, prompt, maxCompletionTok
       Accept: "application/json",
       "User-Agent": "damage-scout-demo/0.1",
       ...(provider.actualProvider === "openrouter" ? {
-        "HTTP-Referer": "http://127.0.0.1:5173",
+        "HTTP-Referer": "http://127.0.0.1:5174",
         "X-Title": "Damage Scout"
       } : {})
     },
@@ -1420,8 +1493,9 @@ async function inspectImageWithPrompt(provider, base64, prompt, maxCompletionTok
   return Array.isArray(parsed.detections) ? parsed.detections : [];
 }
 
-async function preflightProvider(provider, framePath, emit) {
+async function preflightProvider(job, provider, framePath, emit) {
   if (provider.actualProvider !== "openrouter") return;
+  ensureNotCancelled(job);
   emit("trace", {
     provider: provider.id,
     phase: "preflight",
@@ -1443,18 +1517,25 @@ async function preflightProvider(provider, framePath, emit) {
     max_tokens: 48,
     response_format: { type: "json_object" }
   };
-  const response = await fetch(provider.apiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env[provider.keyEnv]}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "damage-scout-demo/0.1",
-      "HTTP-Referer": "http://127.0.0.1:5173",
-      "X-Title": "Damage Scout"
-    },
-    body: JSON.stringify(payload)
-  });
+  const request = createJobAbortSignal(job);
+  let response;
+  try {
+    response = await fetch(provider.apiUrl, {
+      method: "POST",
+      signal: request.signal,
+      headers: {
+        Authorization: `Bearer ${process.env[provider.keyEnv]}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "damage-scout-demo/0.1",
+        "HTTP-Referer": "http://127.0.0.1:5174",
+        "X-Title": "Damage Scout"
+      },
+      body: JSON.stringify(payload)
+    });
+  } finally {
+    request.release();
+  }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(formatProviderError(provider, response.status, body, "preflight"));
   emit("trace", {
