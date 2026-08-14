@@ -1106,19 +1106,15 @@ function App() {
           </div>
           <p className="eyebrow">CEREBRAS VS GPU · SIMULATED OUTPUT</p>
           <h1>Streaming,<br /><em>in motion.</em></h1>
-          <p className="hero-deck">
-            Same workload. Same tools. Different decode speeds. Drag the rates apart and watch
-            <strong> speed become visible.</strong>
-          </p>
         </div>
         <aside className="hero-note" aria-label="Simulation controls">
           <ModeToggle mode={mode} onChange={setMode} />
           <div className="note-copy">
-            <span className="note-index">{mode === "agent" ? "AGENT HARNESS" : "CONTINUOUS TEXT"}</span>
+            <span className="note-index">{mode === "agent" ? "CODING TASK" : "BOOK EXCERPT"}</span>
             <p>{mode === "agent"
-              ? "Both agents receive the same coding tasks. Reasoning and code stream at the selected rate, with periodic 0.7-second tool calls."
-              : "Both streams reveal the same looping public-domain passage, so the output never runs out."}</p>
-            <span className="note-source">{mode === "agent" ? "LOCAL SIMULATION · NO MODEL OR TOOL IS CALLED" : "L. FRANK BAUM · 1900 · PUBLIC DOMAIN"}</span>
+              ? "Both sides work through the same coding task. Change the speed and see how much faster one gets through it."
+              : "Both sides show the same part of The Wonderful Wizard of Oz. Change the speed and compare how quickly the text appears."}</p>
+            <span className="note-source">{mode === "agent" ? "SIMULATED LOCALLY · NOTHING IS SENT ANYWHERE" : "L. FRANK BAUM · 1900 · PUBLIC DOMAIN"}</span>
           </div>
         </aside>
       </header>
