@@ -1,0 +1,57 @@
+.sr-shell { --sr-navy: #2d3e45; }
+.sr-queued { position: absolute; z-index: 4; top: 4.15rem; right: .6rem; display: grid; gap: .12rem; padding: .42rem .52rem; color: white; background: #26363c; border-left: 3px solid var(--q-orange); box-shadow: 0 .35rem 1rem rgba(0,0,0,.14); }
+.sr-queued span { color: #ff9c78; font: 600 .44rem/1 "IBM Plex Mono", monospace; }
+.sr-queued small { font: 400 .42rem/1.2 "IBM Plex Mono", monospace; }
+.sr-stream { margin-top: .55rem; overflow: hidden; background: #172328; border: 1px solid #34454b; color: #dfe7e7; animation: srIn .35s ease both; }
+.sr-stream > header { display: flex; justify-content: space-between; padding: .55rem; border-bottom: 1px solid #405158; font: 500 .44rem/1 "IBM Plex Mono", monospace; letter-spacing: .05em; }
+.sr-stream > header strong { color: #ff946e; }
+.sr-stream-head, .sr-filing { display: grid; grid-template-columns: 1.25fr .55fr .6fr .55fr 1.2fr; }
+.sr-stream-head { color: #789098; background: #223238; }
+.sr-stream-head span { padding: .35rem .45rem; font: 500 .34rem/1 "IBM Plex Mono", monospace; }
+.sr-filing { min-height: 2.55rem; align-items: center; border-bottom: 1px solid #304147; transition: opacity .2s; }
+.sr-filing span { min-width: 0; padding: .42rem; overflow: hidden; border-right: 1px solid #304147; font: 400 .43rem/1 "IBM Plex Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
+.sr-filing span:nth-child(2), .sr-filing span:nth-child(4) { color: #ff9b77; }
+.sr-filing.pending { opacity: .18; }
+.sr-stream > footer { display: flex; align-items: center; gap: .4rem; padding: .6rem; color: #93a8ae; font: 500 .4rem/1 "IBM Plex Mono", monospace; }
+.sr-stream > footer i { width: .42rem; height: .42rem; background: var(--q-orange); border-radius: 50%; box-shadow: 0 0 0 .2rem rgba(241,90,41,.2); animation: qPulse 1s infinite; }
+.sr-stream > footer strong { margin-left: auto; color: #dfe7e7; }
+.sr-candidates { margin-top: .55rem; overflow: hidden; background: white; border: 1px solid var(--q-line); animation: srIn .35s ease both; }
+.sr-candidates > header { display: flex; justify-content: space-between; padding: .55rem; color: white; background: var(--sr-navy); font: 500 .43rem/1 "IBM Plex Mono", monospace; letter-spacing: .05em; }
+.sr-candidates > header strong { color: #ff9a76; }
+.sr-candidates article { display: grid; grid-template-columns: 1.7rem 1fr auto; align-items: center; gap: .5rem; min-height: 4rem; padding: .45rem .55rem; border-bottom: 1px solid var(--q-line); border-left: 3px solid var(--q-amber); }
+.sr-candidates article.critical { border-left-color: var(--q-red); }
+.sr-candidates article.high { border-left-color: var(--q-orange); }
+.sr-candidates article.dismissed { color: #777771; background: #f1efe9; border-left-color: var(--q-green); }
+.sr-rank { color: #aaa69e; font: 500 .5rem/1 "IBM Plex Mono", monospace; }
+.sr-candidates article > div:nth-child(2) { min-width: 0; }
+.sr-candidates article span { color: var(--q-orange); font: 500 .36rem/1 "IBM Plex Mono", monospace; }
+.sr-candidates article h3 { margin: .2rem 0 .18rem; overflow: hidden; font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; }
+.sr-candidates article p { margin: 0; overflow: hidden; color: #65645f; font-size: .45rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.sr-candidates article > strong { color: var(--q-red); font: 600 .39rem/1 "IBM Plex Mono", monospace; }
+.sr-candidates article.dismissed > strong { color: var(--q-green); }
+.sr-initial { position: relative; }
+.sr-first-read { position: absolute; right: .45rem; bottom: .45rem; display: grid; gap: .15rem; padding: .48rem .55rem; color: white; background: var(--q-ink); box-shadow: 0 .35rem 1rem rgba(0,0,0,.17); }
+.sr-first-read span { color: #ff9b77; font: 600 .37rem/1 "IBM Plex Mono", monospace; }
+.sr-first-read strong { font-size: .55rem; }
+.sr-first-read small { color: #c8c7c2; font-size: .4rem; }
+.sr-radar { margin-top: .55rem; padding: .75rem; background: white; border: 1px solid var(--q-line); animation: srIn .35s ease both; }
+.sr-radar-top { display: flex; justify-content: space-between; color: var(--q-orange); font: 600 .42rem/1 "IBM Plex Mono", monospace; letter-spacing: .05em; }
+.sr-radar-top strong { color: var(--q-green); }
+.sr-dismissal { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; margin: .6rem 0; padding: .45rem .5rem; color: white; background: var(--q-green); }
+.sr-dismissal span { color: #c7eadb; font: 600 .35rem/1 "IBM Plex Mono", monospace; }
+.sr-dismissal strong { font-size: .49rem; }
+.sr-alerts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .38rem; }
+.sr-alerts section { min-width: 0; display: flex; flex-direction: column; min-height: 13.5rem; padding: .55rem; background: #f1efe9; border-top: 3px solid var(--q-orange); }
+.sr-alerts section.critical { border-color: var(--q-red); }
+.sr-alerts section > div { display: flex; justify-content: space-between; align-items: center; }
+.sr-alerts section > div span { color: var(--q-muted); font: 500 .33rem/1 "IBM Plex Mono", monospace; }
+.sr-alerts section > div strong { color: var(--q-red); font: 600 .66rem/1 "IBM Plex Mono", monospace; }
+.sr-alerts h3 { margin: .55rem 0 .3rem; font-size: .69rem; line-height: 1.05; letter-spacing: -.025em; }
+.sr-alerts p { margin: 0; color: #5f5e59; font-size: .44rem; line-height: 1.4; }
+.sr-alerts footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: .45rem; border-top: 1px solid var(--q-line); }
+.sr-alerts footer span, .sr-alerts footer strong { font: 500 .32rem/1 "IBM Plex Mono", monospace; }
+.sr-alerts footer strong { color: var(--q-red); }
+.sr-summary { display: flex; justify-content: space-between; gap: .3rem; margin-top: .55rem; padding-top: .5rem; border-top: 1px solid var(--q-line); }
+.sr-summary span { color: #62615c; font: 600 .34rem/1 "IBM Plex Mono", monospace; }
+@keyframes srIn { from { opacity: 0; transform: translateY(.45rem); } }
+@media (max-width: 620px) { .sr-stream-head, .sr-filing { grid-template-columns: 1fr .6fr .6fr 1fr; } .sr-stream-head > :nth-child(4), .sr-filing > :nth-child(4) { display: none; } .sr-alerts { grid-template-columns: 1fr; } .sr-alerts section { min-height: 8rem; } }

@@ -1,0 +1,28 @@
+{
+  "name": "cerebras-ultrafast-enterprise-demos",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "live-earnings",
+    "portfolio-shock",
+    "living-incident",
+    "earnings-shock-desk",
+    "fomc-minutes-shock-map",
+    "sec-material-event-radar"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:earnings": "npm run dev --workspace live-earnings",
+    "dev:portfolio": "npm run dev --workspace portfolio-shock",
+    "dev:incident": "npm run dev --workspace living-incident",
+    "dev:earnings-shock": "npm run dev --workspace earnings-shock-desk",
+    "dev:fomc": "npm run dev --workspace fomc-minutes-shock-map",
+    "dev:sec-radar": "npm run dev --workspace sec-material-event-radar"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^7.2.7",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  }
+}
