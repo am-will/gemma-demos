@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import addIcon from "./prompt-assets/add.svg";
-import sendIcon from "./prompt-assets/send.png";
 import "./prompt-intro.css";
 
-export function PromptIntro({ prompt, attachments = [], onSend, onComplete, typingDuration = 3200 }) {
+export function PromptIntro({ prompt, attachments = [], onSend, onComplete, typingDuration = 3200, theme = "neutral" }) {
   const [typedCharacters, setTypedCharacters] = useState(0);
   const [phase, setPhase] = useState("typing");
   const onCompleteRef = useRef(onComplete);
@@ -58,7 +57,7 @@ export function PromptIntro({ prompt, attachments = [], onSend, onComplete, typi
   const visiblePrompt = prompt.slice(0, typedCharacters);
 
   return (
-    <main className={`prompt-intro q-dot-field phase-${phase}`} aria-label="Prompt introduction">
+    <main className={`prompt-intro prompt-intro--${theme} q-dot-field phase-${phase}`} aria-label="Prompt introduction">
       <section className="prompt-intro__composer">
         <div className="prompt-intro__copy" aria-label={prompt}>
           {visiblePrompt}
@@ -82,7 +81,9 @@ export function PromptIntro({ prompt, attachments = [], onSend, onComplete, typi
             </svg>
           </span>
           <button type="button" className="prompt-intro__send" aria-label="Send prompt">
-            <img src={sendIcon} alt="" aria-hidden="true" />
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
         </div>
         <span className="prompt-intro__pointer" aria-hidden="true" />

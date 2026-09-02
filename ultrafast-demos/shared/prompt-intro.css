@@ -2,6 +2,7 @@
 
 .prompt-intro {
   --prompt-ink: #212121;
+  --prompt-accent: #212121;
   position: fixed;
   z-index: 10;
   inset: 0;
@@ -50,7 +51,7 @@
   height: 1em;
   margin-left: .08em;
   vertical-align: -.12em;
-  background: var(--prompt-ink);
+  background: var(--prompt-accent);
   animation: promptCaret .7s steps(1, end) infinite;
 }
 
@@ -96,13 +97,6 @@
   gap: .8rem;
 }
 
-.prompt-intro__send img {
-  width: 2.55rem;
-  height: 2.75rem;
-  object-fit: fill;
-  opacity: .52;
-}
-
 .prompt-intro__microphone {
   width: 2.55rem;
   height: 2.75rem;
@@ -120,12 +114,24 @@
   place-items: center;
   padding: 0;
   overflow: hidden;
-  background: transparent;
+  background: #919191;
   border: 0;
   border-radius: 50%;
+  color: white;
 }
 
-.prompt-intro__send img { width: 100%; height: 100%; }
+.prompt-intro__send svg { width: 1.65rem; height: 1.65rem; display: block; }
+
+.prompt-intro--orange { --prompt-accent: #f15a29; }
+.prompt-intro--orange .prompt-intro__composer {
+  border-color: rgba(241, 90, 41, .28);
+  box-shadow: 0 .45rem 1.6rem rgba(241, 90, 41, .13), 0 .35rem 1.15rem rgba(0, 0, 0, .12);
+}
+.prompt-intro--orange .prompt-intro__send {
+  color: white;
+  background: #f15a29;
+  box-shadow: 0 .35rem .85rem rgba(241, 90, 41, .28);
+}
 
 .prompt-intro__pointer {
   position: absolute;

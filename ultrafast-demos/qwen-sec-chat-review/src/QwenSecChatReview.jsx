@@ -1,17 +1,22 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "../../shared/quant-base.css";
 import { PromptIntro } from "../../shared/PromptIntro.jsx";
 import cerebrasLogo from "../../../car-damage/public/assets/cerebras-logo.png";
 import "./qwen-sec-chat.css";
 
-const PROMPT = "Analyze the attached SEC filing and determine whether the valuation evidence establishes that the $28 offer is fair.";
+const PROMPT = "Analyze the attached 81-page SEC filing and determine whether the valuation evidence establishes that the $28 offer is fair.";
 const CHALLENGE = "Management says the revised projections are more reliable, and the $28 offer falls inside the revised DCF range. Does that make the transaction fair?";
 const ATTACHMENTS = [
   { src: "/api/example/page/1", alt: "Transaction filing cover" },
   { src: "/api/example/page/41", alt: "Sale process evidence" },
   { src: "/api/example/page/45", alt: "Valuation range evidence" }
 ];
-const SCAN_PAGES = [1, 7, 37, 38, 41, 42, 43, 44, 45];
+const INSPECT_PAGES = [1, 37, 41, 44, 45];
+const RAPID_SCAN_START = .68;
+const RAPID_SCAN_COUNT_END = .88;
+const TOTAL_PAGES = 81;
+const CONFETTI_COLORS = ["#f15a29", "#ffb092", "#ffd23f", "#5ce6a5", "#36c5ff", "#ffffff"];
+const CONFETTI_SHAPES = ["rect", "rect", "circle", "ribbon"];
 
 const STEPS = [
   { id: "triage", label: "Document map" },
@@ -87,6 +92,62 @@ function formatClock(milliseconds) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+function formatRaceClock(milliseconds) {
+  const safeMs = Math.max(0, Math.round(milliseconds || 0));
+  const minutes = Math.floor(safeMs / 60000);
+  const seconds = Math.floor((safeMs % 60000) / 1000);
+  const tenths = Math.floor((safeMs % 1000) / 100);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${tenths}`;
+}
+
+function formatGap(milliseconds) {
+  const seconds = Math.max(0, milliseconds || 0) / 1000;
+  return seconds >= 60 ? formatRaceClock(milliseconds) : `${seconds.toFixed(1)}s`;
+}
+
+const pick = (items) => items[Math.floor(Math.random() * items.length)];
+
+function createConfettiPieces(baseDelay) {
+  return Array.from({ length: 15 }, (_, id) => {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 2.6 + Math.random() * 5.2;
+    const burstX = Math.cos(angle) * distance;
+    const burstY = Math.sin(angle) * distance - 1.2;
+    const fallX = burstX + (Math.random() - .5) * 2.6;
+    const fallY = burstY + 6 + Math.random() * 8;
+    const spin = (Math.random() < .5 ? -1 : 1) * (240 + Math.random() * 540);
+    return {
+      id,
+      shape: pick(CONFETTI_SHAPES),
+      color: pick(CONFETTI_COLORS),
+      style: {
+        "--bx": `${burstX.toFixed(2)}rem`,
+        "--by": `${burstY.toFixed(2)}rem`,
+        "--fx": `${fallX.toFixed(2)}rem`,
+        "--fy": `${fallY.toFixed(2)}rem`,
+        "--spin": `${Math.round(spin)}deg`,
+        "--size": `${(.34 + Math.random() * .38).toFixed(2)}rem`,
+        "--delay": `${baseDelay + Math.round(Math.random() * 70)}ms`,
+        "--duration": `${Math.round(1100 + Math.random() * 620)}ms`,
+        "--flutter": `${Math.round(320 + Math.random() * 480)}ms`
+      }
+    };
+  });
+}
+
+function createConfettiBursts() {
+  const zones = [
+    [18, 15], [48, 12], [80, 18],
+    [22, 54], [52, 58], [78, 50]
+  ];
+  return zones.map(([left, top], id) => ({
+    id,
+    left: `${left + (Math.random() - .5) * 10}%`,
+    top: `${top + (Math.random() - .5) * 9}%`,
+    pieces: createConfettiPieces(id * 90 + Math.round(Math.random() * 60))
+  }));
+}
+
 async function readNdjson(response, onEvent) {
   if (!response.ok) throw new Error(`Review request failed (${response.status}).`);
   if (!response.body) throw new Error("The server did not return a response stream.");
@@ -109,8 +170,14 @@ function CerebrasMark() {
 }
 
 function DocumentScan({ progress, exiting }) {
-  const previewIndex = Math.min(SCAN_PAGES.length - 1, Math.floor(progress * SCAN_PAGES.length));
-  const previewPage = SCAN_PAGES[previewIndex];
+  const rapidScan = progress >= RAPID_SCAN_START;
+  const inspectProgress = Math.min(1, progress / RAPID_SCAN_START);
+  const rapidProgress = rapidScan ? (progress - RAPID_SCAN_START) / (1 - RAPID_SCAN_START) : 0;
+  const rapidCountProgress = Math.min(1, rapidProgress / RAPID_SCAN_COUNT_END);
+  const inspectedIndex = Math.min(INSPECT_PAGES.length - 1, Math.floor(inspectProgress * INSPECT_PAGES.length));
+  const rapidPage = Math.min(TOTAL_PAGES, INSPECT_PAGES.length + 1 + Math.floor(rapidCountProgress * (TOTAL_PAGES - INSPECT_PAGES.length - 1)));
+  const displayedPage = rapidScan ? rapidPage : inspectedIndex + 1;
+  const previewPage = rapidScan ? INSPECT_PAGES[rapidPage % INSPECT_PAGES.length] : INSPECT_PAGES[inspectedIndex];
 
   return (
     <section className={`qchat-scan q-dot-field${exiting ? " is-exiting" : ""}`} aria-label="Scanning the SEC filing">
@@ -123,14 +190,16 @@ function DocumentScan({ progress, exiting }) {
       </header>
 
       <div className="qchat-scan-stage">
-        <figure className="qchat-scan-document" key={previewPage}>
-          <figcaption>Public transaction filing</figcaption>
+        <figure className={`qchat-scan-document${rapidScan ? " is-rapid" : ""}`} key={`${rapidScan ? "rapid" : "inspect"}-${previewPage}`}>
+          <figcaption>{rapidScan ? "Completing full-document pass" : "Inspecting decision-relevant evidence"}</figcaption>
           <img src={`/api/example/page/${previewPage}`} alt="SEC filing excerpt" />
-          {progress > 0 && <i className="qchat-scan-beam" />}
+          {progress > 0 && !rapidScan && <i className="qchat-scan-beam" />}
+          {rapidScan && <div className="qchat-rapid-pages" aria-hidden="true"><i /><i /><i /></div>}
         </figure>
-        <div className="qchat-scan-status">
-          <span>QWEN IS READING</span>
-          <strong>{progress < .4 ? "Mapping the disclosure" : progress < .75 ? "Locating valuation evidence" : "Testing the fairness case"}</strong>
+        <div className={`qchat-scan-status${rapidScan ? " is-rapid" : ""}`}>
+          <span>{rapidScan ? "FULL DOCUMENT PASS" : "QWEN IS READING"}</span>
+          <em className="qchat-page-total"><b>{displayedPage}</b><i>/ {TOTAL_PAGES}</i></em>
+          <strong>{rapidScan ? "Flying through the remaining pages" : "Testing the valuation evidence"}</strong>
         </div>
       </div>
     </section>
@@ -164,6 +233,7 @@ function ChatLane({ laneId, lane }) {
   const threadRef = useRef(null);
   const meta = LANE_META[laneId];
   const running = lane.status === "running";
+  const complete = lane.status === "complete";
 
   useEffect(() => {
     const container = threadRef.current;
@@ -174,7 +244,12 @@ function ChatLane({ laneId, lane }) {
     <section className={`qchat-lane ${meta.tone}`} aria-label={`${meta.name} Qwen 3.8 27B review`}>
       <header className="qchat-lane-header">
         <div><strong>{meta.name}</strong><span>Qwen 3.8 27B</span></div>
-        <b className="qchat-lane-clock">{formatClock(lane.elapsedMs)}</b>
+        {complete ? (
+          <div className="qchat-lane-finish" aria-label={`Completed in ${formatClock(lane.elapsedMs)}`}>
+            <strong>DONE</strong>
+            <b>{formatClock(lane.elapsedMs)}</b>
+          </div>
+        ) : <b className="qchat-lane-clock">{formatClock(lane.elapsedMs)}</b>}
       </header>
 
       <section className="qchat-thread" ref={threadRef}>
@@ -242,7 +317,7 @@ export function QwenSecChatReview() {
     if (scene !== "scan") return undefined;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const delay = reduceMotion ? 80 : 720;
-    const duration = reduceMotion ? 500 : 5600;
+    const duration = reduceMotion ? 500 : 6000;
     const started = performance.now() + delay;
     let transitionTimer;
 
@@ -343,6 +418,7 @@ export function QwenSecChatReview() {
     {showIntro && <PromptIntro
       prompt={PROMPT}
       attachments={ATTACHMENTS}
+      theme="orange"
       onSend={() => setScene("scan")}
       onComplete={() => setShowIntro(false)}
     />}
