@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, ChevronLeft, ChevronRight, Image as ImageIcon, UploadCloud } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Image as ImageIcon, UploadCloud, X } from "lucide-react";
 import "./styles.css";
 
 const api = "";
@@ -33,10 +33,21 @@ function App() {
   const [error, setError] = useState("");
   const [settings, setSettings] = useState({ sampleFps: 0.5, maxFrames: 20, confidenceFloor: 0.35, frameConcurrency: 4, tileConcurrency: 3 });
   const [previewUrl, setPreviewUrl] = useState("");
+  const [showcase, setShowcase] = useState(false);
+  const [showcaseDismissed, setShowcaseDismissed] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [demoVideo, setDemoVideo] = useState(null);
+  const [demoCycle, setDemoCycle] = useState(0);
   const inputRef = useRef(null);
   const eventSourceRef = useRef(null);
+  const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo");
+
+  const cerebrasFinalMs = Number.isFinite(results.cerebras?.totalLatencyMs) ? results.cerebras.totalLatencyMs : null;
+  const gpuFinalMs = Number.isFinite(results.gpu?.totalLatencyMs) ? results.gpu.totalLatencyMs : null;
+  const bothFinished = cerebrasFinalMs !== null && gpuFinalMs !== null;
 
   useEffect(() => {
+    if (isDemo) return; // the demo seeds its own health so there is no backend call
     fetch(`${api}/api/health`)
       .then(readJsonResponse)
       .then(setHealth)
@@ -54,6 +65,68 @@ function App() {
   }, [file]);
 
   useEffect(() => () => eventSourceRef.current?.close(), []);
+
+  // Once both providers finish, hold a beat, then pop the two timers out into
+  // the full-screen showcase. Clicking a timer reverses it (see TimerShowcase).
+  useEffect(() => {
+    if (!bothFinished) {
+      setShowcase(false);
+      return undefined;
+    }
+    if (showcaseDismissed) return undefined;
+    const t = window.setTimeout(() => setShowcase(true), 1000);
+    return () => window.clearTimeout(t);
+  }, [bothFinished, showcaseDismissed]);
+
+  // Fake demo (add ?demo to the URL): replay the recorded 3472.mp4 run's
+  // finished state so the popout + evidence viewer can be recorded without the API.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("demo")) return undefined;
+    let cancelled = false;
+    setHealth({ providers: { cerebras: { model: "gemma-4-31b" }, gpu: { model: "google/gemma-4-31b-it" } } });
+    setError("");
+    import("./demoData.json").then((module) => {
+      if (cancelled) return;
+      const data = module.default || module;
+      setResults(data.results);
+      setEvents(data.events);
+      setWinnerProvider("cerebras");
+      setDemoVideo(data.video);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Loop the demo every 30s so a fresh take can be recorded from the top.
+  useEffect(() => {
+    if (!isDemo) return undefined;
+    const id = window.setInterval(() => setDemoCycle((cycle) => cycle + 1), 30000);
+    return () => window.clearInterval(id);
+  }, [isDemo]);
+
+  useEffect(() => {
+    if (!isDemo || demoCycle === 0) return undefined;
+    setPreview(null);
+    setShowcase(false);
+    setShowcaseDismissed(true);
+    setError("");
+    window.scrollTo(0, 0);
+    // Re-arm the dismissed flag so the showcase effect pops the timers again.
+    const t = window.setTimeout(() => setShowcaseDismissed(false), 60);
+    return () => window.clearTimeout(t);
+  }, [demoCycle]);
+
+  useEffect(() => {
+    if (!preview) return undefined;
+    function onKey(event) {
+      if (event.key === "Escape") setPreview(null);
+      if (event.key === "ArrowLeft") stepPreview(-1);
+      if (event.key === "ArrowRight") stepPreview(1);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   useEffect(() => {
     if (!jobId) return undefined;
@@ -141,6 +214,9 @@ function App() {
     setEvents([]);
     setResults({ gpu: null, cerebras: null });
     setWinnerProvider(null);
+    setShowcase(false);
+    setShowcaseDismissed(false);
+    setPreview(null);
     const startedAt = Date.now();
     setRunStartedAt(startedAt);
     setNow(startedAt);
@@ -225,11 +301,26 @@ function App() {
     }
   }
 
+  function openPreview(provider, items, index) {
+    setPreview({ provider, items, index });
+  }
+
+  function stepPreview(direction) {
+    setPreview((current) => {
+      if (!current?.items?.length) return current;
+      const next = (current.index + direction + current.items.length) % current.items.length;
+      return { ...current, index: next };
+    });
+  }
+
   const panelResults = Object.fromEntries(PANEL_PROVIDERS.map((provider) => [
     provider,
     results[provider] || job?.result?.providers?.[provider]
   ]));
   const hasAnyPanelResult = PANEL_PROVIDERS.some((provider) => panelResults[provider]?.status === "complete");
+  const videoName = file ? file.name : demoVideo?.name;
+  const videoStatusLabel = demoVideo ? demoVideo.sizeLabel : previewStatus;
+  const videoPercentLabel = demoVideo ? "100%" : file ? (extractionReady ? "100%" : `${extractionPercent}%`) : "0%";
 
   return (
     <main className="page-shell">
@@ -244,12 +335,16 @@ function App() {
           <div className="picker-field">
             <label className="field-label" htmlFor="video-input">WALKAROUND VIDEO</label>
             <button
-              className={`video-drop ${previewUrl ? "loaded" : "empty"} ${extractionReady ? "ready" : ""}`}
+              className={`video-drop ${previewUrl || demoVideo ? "loaded" : "empty"} ${extractionReady ? "ready" : ""}`}
               onClick={() => inputRef.current?.click()}
               style={{ "--reveal": `${extractionPercent}%`, "--reveal-ratio": previewRevealProgress }}
               type="button"
             >
-              {previewUrl && previewRevealProgress > 0 ? (
+              {demoVideo ? (
+                <span className="preview-reveal" aria-hidden="true" style={{ clipPath: "none" }}>
+                  <img className="video-preview" src={demoVideo.posterUrl} alt="" />
+                </span>
+              ) : previewUrl && previewRevealProgress > 0 ? (
                 <span
                   className="preview-reveal"
                   aria-hidden="true"
@@ -268,9 +363,9 @@ function App() {
               ) : null}
               <span className="drop-overlay">
                 <UploadCloud size={36} />
-                <strong>{file ? file.name : "Choose video"}</strong>
-                <span>{previewStatus}</span>
-                <em className={file ? "" : "ghost"}>{file ? extractionReady ? "100%" : `${extractionPercent}%` : "0%"}</em>
+                <strong>{videoName || "Choose video"}</strong>
+                <span>{videoStatusLabel}</span>
+                <em className={file || demoVideo ? "" : "ghost"}>{videoPercentLabel}</em>
               </span>
             </button>
             <input ref={inputRef} id="video-input" className="hidden-input" type="file" accept="video/*" onChange={handleFileChange} />
@@ -279,14 +374,14 @@ function App() {
           <button className={`primary-button ${extractionReady ? "ready" : ""} ${canStop ? "stopping" : ""}`} disabled={!canRun && !canStop} onClick={canStop ? stopInspection : startInspection} type="button">
             {canStop ? "Stop" : extractionReady ? "Check for damage" : uploadingOrExtracting ? "Preparing frames" : "Upload video first"}
           </button>
-          {error ? <div className="error-pill"><AlertTriangle size={16} /> {error}</div> : null}
+          {error && !isDemo ? <div className="error-pill"><AlertTriangle size={16} /> {error}</div> : null}
         </div>
       </section>
 
       <section className={`agents-grid ${hasAnyPanelResult ? "has-results" : ""}`}>
         {PANEL_PROVIDERS.map((provider) => (
           <AgentPanel
-            key={provider}
+            key={isDemo ? `${provider}-${demoCycle}` : provider}
             provider={provider}
             health={health?.providers?.[provider]}
             events={events.filter((event) => event.provider === provider)}
@@ -296,15 +391,29 @@ function App() {
             winnerProvider={winnerProvider}
             runStartedAt={runStartedAt}
             now={now}
+            lifting={showcase}
+            onTimerClick={bothFinished ? () => setShowcase(true) : undefined}
+            onPreview={openPreview}
+            suppressCelebration={isDemo}
           />
         ))}
       </section>
+      <TimerShowcase
+        active={showcase}
+        cerebrasMs={cerebrasFinalMs}
+        gpuMs={gpuFinalMs}
+        onClose={() => {
+          setShowcase(false);
+          setShowcaseDismissed(true);
+        }}
+      />
+      <EvidencePreviewModal preview={preview} onClose={() => setPreview(null)} onStep={stepPreview} />
       <footer className="brand-footer"><img src="/assets/cerebras-wordmark.png" alt="Cerebras" /></footer>
     </main>
   );
 }
 
-function AgentPanel({ provider, health, events, result, runState, running, winnerProvider, runStartedAt, now }) {
+function AgentPanel({ provider, health, events, result, runState, running, winnerProvider, runStartedAt, now, lifting, onTimerClick, onPreview, suppressCelebration }) {
   const config = PROVIDERS[provider];
   const pageSize = 6;
   const detections = result?.detections || [];
@@ -321,21 +430,21 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
   const canPageForward = page < pageCount - 1;
 
   useEffect(() => {
-    if (provider !== "cerebras" || !finished) {
+    if (suppressCelebration || provider !== "cerebras" || !finished) {
       setCelebrate(false);
       return undefined;
     }
     setCelebrate(true);
     const timeout = setTimeout(() => setCelebrate(false), 3200);
     return () => clearTimeout(timeout);
-  }, [provider, finished]);
+  }, [provider, finished, suppressCelebration]);
 
   useEffect(() => {
     setPage(0);
   }, [result?.reportUrl, totalDetections]);
 
   return (
-    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""}`}>
+    <article className={`agent-card ${config.accent} ${isWinner ? "winner" : ""} ${isLoser ? "loser" : ""} ${finished ? "finished" : ""} ${celebrate ? "celebrating" : ""} ${lifting ? "lifting" : ""}`}>
       {celebrate ? <CerebrasCelebration /> : null}
       <div className="agent-top">
         <header>
@@ -343,7 +452,13 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
             <h2><img src={config.logo} alt="" /> {config.name}</h2>
             <span>{formatPanelModel(provider, health?.model || runState?.model || "gemma-4")}</span>
           </div>
-          <div className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""}`}>{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
+          <div
+            className={`completion-time ${isWinner ? "winner-time" : isLoser ? "loser-time" : ""} ${onTimerClick ? "clickable" : ""}`}
+            data-timer={provider}
+            onClick={onTimerClick}
+            role={onTimerClick ? "button" : undefined}
+            tabIndex={onTimerClick ? 0 : undefined}
+          >{elapsedMs === null ? "00:00.000" : formatTimer(elapsedMs)}</div>
         </header>
         <TraceWindow events={events} />
       </div>
@@ -370,13 +485,18 @@ function AgentPanel({ provider, health, events, result, runState, running, winne
         {detections.length ? (
           <div className="evidence-grid">
             {visibleDetections.map((item, index) => (
-              <a className="evidence-tile" href={item.imageUrl} target="_blank" rel="noreferrer" key={`${provider}-${item.imageUrl || index}`}>
+              <button
+                className="evidence-tile"
+                type="button"
+                key={`${provider}-${item.imageUrl || index}`}
+                onClick={() => onPreview?.(provider, detections, page * pageSize + index)}
+              >
                 {item.imageUrl ? <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} /> : <span className="image-placeholder"><ImageIcon size={24} /></span>}
                 <figcaption>
                   <strong>{item.label || "damage"}</strong>
                   <span>{Math.round(Number(item.confidence || 0) * 100)}% · Frame {item.frameNumber}</span>
                 </figcaption>
-              </a>
+              </button>
             ))}
           </div>
         ) : null}
@@ -400,6 +520,132 @@ function CerebrasCelebration() {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Both timers pop out of their card headers and land enlarged, side by side.
+// The forward motion is a FLIP (WAAPI tween from the small in-card timer up to
+// the centered pill); clicking a timer plays that same tween in reverse and
+// then dismisses, returning to the end screen with the cards intact.
+function TimerShowcase({ active, cerebrasMs, gpuMs, onClose }) {
+  const pillRefs = useRef({});
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+
+  const flip = (reverse) => {
+    const animations = [];
+    ["cerebras", "gpu"].forEach((prov, index) => {
+      const pill = pillRefs.current[prov];
+      const source = document.querySelector(`[data-timer="${prov}"]`);
+      if (!pill || !source) return;
+      const from = source.getBoundingClientRect();
+      const to = pill.getBoundingClientRect();
+      const scale = to.height ? from.height / to.height : 1;
+      const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+      const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+      const origin = { transform: `translate(${dx}px, ${dy}px) scale(${scale})` };
+      const home = { transform: "translate(0px, 0px) scale(1)" };
+      animations.push(pill.animate(reverse ? [home, origin] : [origin, home], {
+        duration: reverse ? 620 : 900,
+        delay: index * 70,
+        easing: reverse ? "cubic-bezier(0.5, 0, 0.75, 0.35)" : "cubic-bezier(0.2, 0.86, 0.24, 1)",
+        fill: reverse ? "forwards" : "backwards"
+      }));
+    });
+    return animations;
+  };
+
+  useLayoutEffect(() => {
+    if (!active) {
+      setClosing(false);
+      closingRef.current = false;
+      return undefined;
+    }
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return undefined;
+    const animations = flip(false);
+    return () => animations.forEach((animation) => animation.cancel());
+  }, [active, cerebrasMs, gpuMs]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    function onKey(event) {
+      if (event.key === "Escape") requestClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active]);
+
+  function requestClose() {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const animations = reduce ? [] : flip(true);
+    if (!animations.length) {
+      onClose();
+      return;
+    }
+    Promise.all(animations.map((animation) => animation.finished.catch(() => {}))).then(() => onClose());
+  }
+
+  if (!active) return null;
+
+  const cMs = Number.isFinite(cerebrasMs) ? cerebrasMs : Infinity;
+  const gMs = Number.isFinite(gpuMs) ? gpuMs : Infinity;
+  const faster = cMs <= gMs ? "cerebras" : "gpu";
+  const ratio = Math.min(cMs, gMs) > 0 && Number.isFinite(Math.max(cMs, gMs)) ? Math.max(cMs, gMs) / Math.min(cMs, gMs) : null;
+  const slots = [
+    { p: "cerebras", label: "Cerebras", ms: cerebrasMs },
+    { p: "gpu", label: "GPU", ms: gpuMs }
+  ];
+
+  return (
+    <div className={`timer-showcase ${closing ? "closing" : ""}`} role="dialog" aria-label="Inspection time" onMouseDown={requestClose}>
+      <div className="timer-showcase-inner" onMouseDown={(event) => event.stopPropagation()}>
+        <span className="showcase-eyebrow">Inspection time</span>
+        <div className="showcase-pillrow">
+          {slots.map((slot) => (
+            <div className={`showcase-slot ${slot.p} ${slot.p === faster ? "is-faster" : "is-slower"}`} key={slot.p}>
+              <span className="showcase-label">{slot.label}</span>
+              <button className="showcase-pill" ref={(el) => { pillRefs.current[slot.p] = el; }} type="button" onClick={requestClose}>
+                {formatTimer(Number.isFinite(slot.ms) ? slot.ms : 0)}
+              </button>
+            </div>
+          ))}
+        </div>
+        {ratio && ratio >= 1.05 ? (
+          <div className={`showcase-verdict ${faster}`}><strong>{formatRatio(ratio)}&times;</strong> faster</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function EvidencePreviewModal({ preview, onClose, onStep }) {
+  if (!preview?.items?.length) return null;
+
+  const item = preview.items[preview.index];
+  const counter = `${preview.index + 1} / ${preview.items.length}`;
+  const confidence = Math.round(Number(item.confidence || 0) * 100);
+  const evidence = String(item.evidence || "").trim();
+  const meta = [item.location, `${confidence}% confidence`, `Frame ${item.frameNumber}`, item.severity].filter(Boolean).join(" · ");
+
+  return (
+    <div className="preview-backdrop" role="dialog" aria-modal="true" aria-label="Evidence preview" onMouseDown={onClose}>
+      <div className={`preview-frame ${preview.provider === "cerebras" ? "cerebras" : "gpu"}`} onMouseDown={(event) => event.stopPropagation()}>
+        <button className="preview-close" type="button" onClick={onClose} aria-label="Close preview"><X size={22} /></button>
+        <button className="preview-arrow previous" type="button" onClick={() => onStep(-1)} aria-label="Previous image"><ChevronLeft size={34} /></button>
+        <div className="preview-image-wrap">
+          {item.imageUrl ? <img src={item.imageUrl} alt={`${item.label} on ${item.location}`} /> : <div className="preview-placeholder"><ImageIcon size={44} /></div>}
+        </div>
+        <button className="preview-arrow next" type="button" onClick={() => onStep(1)} aria-label="Next image"><ChevronRight size={34} /></button>
+        <div className="preview-meta">
+          <strong>{item.label || "damage"}</strong>
+          <span>{counter}</span>
+          {meta || evidence ? <p>{meta}{meta && evidence ? " — " : ""}{evidence}</p> : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -569,6 +815,11 @@ function formatTimer(ms) {
   const seconds = Math.floor((safeMs % 60000) / 1000);
   const milliseconds = safeMs % 1000;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
+}
+
+function formatRatio(ratio) {
+  if (!Number.isFinite(ratio)) return "";
+  return ratio >= 10 ? String(Math.round(ratio)) : ratio.toFixed(1);
 }
 
 function formatBytes(bytes) {

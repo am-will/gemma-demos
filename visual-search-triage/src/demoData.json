@@ -1,0 +1,1234 @@
+{
+"description": "person wearing blue shirt",
+"imageCount": 80,
+"events": [
+{
+"type": "trace",
+"phase": "boot",
+"message": "Agent online with model gemma-4-31b",
+"at": "2026-06-29T14:03:51.500",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:51.700",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 1/16 with 5 images",
+"at": "2026-06-29T14:03:51.700",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 743ms",
+"at": "2026-06-29T14:03:52.443",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 1: 0 matches in 743ms",
+"at": "2026-06-29T14:03:52.443",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:52.443",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 2/16 with 5 images",
+"at": "2026-06-29T14:03:52.443",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 387ms",
+"at": "2026-06-29T14:03:52.830",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 2: 0 matches in 387ms",
+"at": "2026-06-29T14:03:52.830",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:52.830",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 3/16 with 5 images",
+"at": "2026-06-29T14:03:52.830",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 598ms",
+"at": "2026-06-29T14:03:53.428",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 3: 1 matches in 598ms",
+"at": "2026-06-29T14:03:53.428",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:53.428",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 4/16 with 5 images",
+"at": "2026-06-29T14:03:53.428",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 464ms",
+"at": "2026-06-29T14:03:53.892",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 4: 0 matches in 464ms",
+"at": "2026-06-29T14:03:53.892",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:53.892",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 5/16 with 5 images",
+"at": "2026-06-29T14:03:53.892",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 433ms",
+"at": "2026-06-29T14:03:54.325",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 5: 1 matches in 433ms",
+"at": "2026-06-29T14:03:54.325",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:54.325",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 6/16 with 5 images",
+"at": "2026-06-29T14:03:54.325",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 806ms",
+"at": "2026-06-29T14:03:55.131",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 6: 2 matches in 806ms",
+"at": "2026-06-29T14:03:55.131",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:55.131",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 7/16 with 5 images",
+"at": "2026-06-29T14:03:55.131",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 658ms",
+"at": "2026-06-29T14:03:55.789",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 7: 1 matches in 658ms",
+"at": "2026-06-29T14:03:55.789",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:55.789",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 8/16 with 5 images",
+"at": "2026-06-29T14:03:55.789",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 667ms",
+"at": "2026-06-29T14:03:56.456",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 8: 1 matches in 667ms",
+"at": "2026-06-29T14:03:56.456",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:56.456",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 9/16 with 5 images",
+"at": "2026-06-29T14:03:56.456",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 366ms",
+"at": "2026-06-29T14:03:56.822",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 9: 1 matches in 366ms",
+"at": "2026-06-29T14:03:56.822",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:56.822",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 10/16 with 5 images",
+"at": "2026-06-29T14:03:56.822",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 614ms",
+"at": "2026-06-29T14:03:57.436",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 10: 1 matches in 614ms",
+"at": "2026-06-29T14:03:57.436",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:57.436",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 11/16 with 5 images",
+"at": "2026-06-29T14:03:57.436",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 918ms",
+"at": "2026-06-29T14:03:58.354",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 11: 1 matches in 918ms",
+"at": "2026-06-29T14:03:58.354",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:58.354",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 12/16 with 5 images",
+"at": "2026-06-29T14:03:58.354",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 669ms",
+"at": "2026-06-29T14:03:59.023",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 12: 1 matches in 669ms",
+"at": "2026-06-29T14:03:59.023",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:59.023",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 13/16 with 5 images",
+"at": "2026-06-29T14:03:59.023",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 548ms",
+"at": "2026-06-29T14:03:59.571",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 13: 0 matches in 548ms",
+"at": "2026-06-29T14:03:59.571",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:59.571",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 14/16 with 5 images",
+"at": "2026-06-29T14:03:59.571",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 550ms",
+"at": "2026-06-29T14:04:00.121",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 14: 0 matches in 550ms",
+"at": "2026-06-29T14:04:00.121",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:04:00.121",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 15/16 with 5 images",
+"at": "2026-06-29T14:04:00.121",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 324ms",
+"at": "2026-06-29T14:04:00.445",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 15: 0 matches in 324ms",
+"at": "2026-06-29T14:04:00.445",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:04:00.445",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 16/16 with 5 images",
+"at": "2026-06-29T14:04:00.445",
+"provider": "cerebras"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 657ms",
+"at": "2026-06-29T14:04:01.102",
+"provider": "cerebras"
+},
+{
+"type": "partial_result",
+"message": "batch 16: 0 matches in 657ms",
+"at": "2026-06-29T14:04:01.102",
+"provider": "cerebras"
+},
+{
+"provider": "cerebras",
+"type": "provider_done",
+"message": "complete: 10 matches",
+"at": "2026-06-29T14:04:01.102"
+},
+{
+"type": "trace",
+"phase": "boot",
+"message": "Agent online through OpenRouter with model google/gemma-4-31b-it:free",
+"at": "2026-06-29T14:03:51.500",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:03:51.700",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 1/16 with 5 images",
+"at": "2026-06-29T14:03:51.700",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 12025ms",
+"at": "2026-06-29T14:04:03.725",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 1: 1 matches in 12025ms",
+"at": "2026-06-29T14:04:03.725",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:04:03.725",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 2/16 with 5 images",
+"at": "2026-06-29T14:04:03.725",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 8402ms",
+"at": "2026-06-29T14:04:12.127",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 2: 0 matches in 8402ms",
+"at": "2026-06-29T14:04:12.127",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:04:12.127",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 3/16 with 5 images",
+"at": "2026-06-29T14:04:12.127",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 10683ms",
+"at": "2026-06-29T14:04:22.810",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 3: 1 matches in 10683ms",
+"at": "2026-06-29T14:04:22.810",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:04:22.810",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 4/16 with 5 images",
+"at": "2026-06-29T14:04:22.810",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 51326ms",
+"at": "2026-06-29T14:05:14.136",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 4: 1 matches in 51326ms",
+"at": "2026-06-29T14:05:14.136",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:05:14.136",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 5/16 with 5 images",
+"at": "2026-06-29T14:05:14.136",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 12557ms",
+"at": "2026-06-29T14:05:26.693",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 5: 1 matches in 12557ms",
+"at": "2026-06-29T14:05:26.693",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:05:26.693",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 6/16 with 5 images",
+"at": "2026-06-29T14:05:26.693",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 10450ms",
+"at": "2026-06-29T14:05:37.143",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 6: 1 matches in 10450ms",
+"at": "2026-06-29T14:05:37.143",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:05:37.143",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 7/16 with 5 images",
+"at": "2026-06-29T14:05:37.143",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 12650ms",
+"at": "2026-06-29T14:05:49.793",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 7: 1 matches in 12650ms",
+"at": "2026-06-29T14:05:49.793",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:05:49.793",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 8/16 with 5 images",
+"at": "2026-06-29T14:05:49.793",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 11628ms",
+"at": "2026-06-29T14:06:01.421",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 8: 1 matches in 11628ms",
+"at": "2026-06-29T14:06:01.421",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:06:01.421",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 9/16 with 5 images",
+"at": "2026-06-29T14:06:01.421",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 11519ms",
+"at": "2026-06-29T14:06:12.940",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 9: 1 matches in 11519ms",
+"at": "2026-06-29T14:06:12.940",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:06:12.940",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 10/16 with 5 images",
+"at": "2026-06-29T14:06:12.940",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 10120ms",
+"at": "2026-06-29T14:06:23.060",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 10: 1 matches in 10120ms",
+"at": "2026-06-29T14:06:23.060",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:06:23.060",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 11/16 with 5 images",
+"at": "2026-06-29T14:06:23.060",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 11851ms",
+"at": "2026-06-29T14:06:34.911",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 11: 1 matches in 11851ms",
+"at": "2026-06-29T14:06:34.911",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:06:34.911",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 12/16 with 5 images",
+"at": "2026-06-29T14:06:34.911",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 11042ms",
+"at": "2026-06-29T14:06:45.953",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 12: 1 matches in 11042ms",
+"at": "2026-06-29T14:06:45.953",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:06:45.953",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 13/16 with 5 images",
+"at": "2026-06-29T14:06:45.953",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 9829ms",
+"at": "2026-06-29T14:06:55.782",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 13: 0 matches in 9829ms",
+"at": "2026-06-29T14:06:55.782",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:06:55.782",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 14/16 with 5 images",
+"at": "2026-06-29T14:06:55.782",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 8962ms",
+"at": "2026-06-29T14:07:04.744",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 14: 0 matches in 8962ms",
+"at": "2026-06-29T14:07:04.744",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:07:04.744",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 15/16 with 5 images",
+"at": "2026-06-29T14:07:04.744",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 9232ms",
+"at": "2026-06-29T14:07:13.976",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 15: 0 matches in 9232ms",
+"at": "2026-06-29T14:07:13.976",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "command",
+"message": "curl -s https://openrouter.ai/api/v1/chat/completions \\\n  -H \"Authorization: Bearer $OPENROUTER_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it:free\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"person wearing blue shirt...\"}, 5 labeled image_url parts]}]}'",
+"at": "2026-06-29T14:07:13.976",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "dispatch",
+"message": "POST https://openrouter.ai/api/v1/chat/completions batch 16/16 with 5 images",
+"at": "2026-06-29T14:07:13.976",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "trace",
+"phase": "response",
+"message": "HTTP 200 in 10694ms",
+"at": "2026-06-29T14:07:24.670",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"type": "partial_result",
+"message": "batch 16: 0 matches in 10694ms",
+"at": "2026-06-29T14:07:24.670",
+"provider": "openrouter",
+"panelProvider": "gemini"
+},
+{
+"provider": "openrouter",
+"panelProvider": "gemini",
+"type": "provider_done",
+"message": "complete: 11 matches",
+"at": "2026-06-29T14:07:24.670"
+}
+],
+"results": {
+"cerebras": {
+"provider": "cerebras",
+"status": "complete",
+"totalLatencyMs": 9407,
+"model": "gemma-4-31b",
+"matches": [
+{
+"provider": "cerebras",
+"filename": "000000076625.jpg",
+"providerRank": 1,
+"rank": 1,
+"confidence": 0.7,
+"why_match": "There are people in the background wearing blue shirts.",
+"visible_evidence": "A person standing near the train on the right side is wearing a blue shirt.",
+"possible_false_positive": "The person is small and distant, making the color hard to verify definitively.",
+"imageUrl": "/demo-blueshirt/011-000000076625.jpg",
+"batch": 3
+},
+{
+"provider": "cerebras",
+"filename": "000000034139.jpg",
+"providerRank": 1,
+"rank": 2,
+"confidence": 0.9,
+"why_match": "A woman is wearing a bright blue jacket or shirt.",
+"visible_evidence": "The woman standing next to the man is wearing a blue upper garment.",
+"possible_false_positive": "The garment could be a jacket rather than a shirt.",
+"imageUrl": "/demo-blueshirt/024-000000034139.jpg",
+"batch": 5
+},
+{
+"provider": "cerebras",
+"filename": "000000093437.jpg",
+"providerRank": 1,
+"rank": 3,
+"confidence": 0.9,
+"why_match": "The person is wearing a blue button-up shirt or jacket.",
+"visible_evidence": "A blue long-sleeved garment with buttons on the front.",
+"possible_false_positive": "The garment could be a lightweight jacket rather than a shirt.",
+"imageUrl": "/demo-blueshirt/026-000000093437.jpg",
+"batch": 6
+},
+{
+"provider": "cerebras",
+"filename": "000000068093.jpg",
+"providerRank": 2,
+"rank": 4,
+"confidence": 0.8,
+"why_match": "One person is wearing a light blue t-shirt.",
+"visible_evidence": "The person standing behind the motorcycle is wearing a light blue short-sleeved shirt.",
+"possible_false_positive": "The color could be interpreted as grey depending on lighting.",
+"imageUrl": "/demo-blueshirt/028-000000068093.jpg",
+"batch": 6
+},
+{
+"provider": "cerebras",
+"filename": "000000158227.jpg",
+"providerRank": 1,
+"rank": 5,
+"confidence": 1,
+"why_match": "A child is wearing a dark blue t-shirt.",
+"visible_evidence": "The person is wearing a navy blue short-sleeved shirt with red text on the front.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/031-000000158227.jpg",
+"batch": 7
+},
+{
+"provider": "cerebras",
+"filename": "000000196141.jpg",
+"providerRank": 1,
+"rank": 6,
+"confidence": 1,
+"why_match": "A person is wearing a bright blue baseball jersey.",
+"visible_evidence": "The catcher in the foreground is wearing a blue shirt with the number 33 on the back.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/039-000000196141.jpg",
+"batch": 8
+},
+{
+"provider": "cerebras",
+"filename": "000000195842.jpg",
+"providerRank": 1,
+"rank": 7,
+"confidence": 1,
+"why_match": "A person is clearly visible wearing a blue long-sleeved shirt.",
+"visible_evidence": "The person standing on the right is wearing a solid blue shirt.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/044-000000195842.jpg",
+"batch": 9
+},
+{
+"provider": "cerebras",
+"filename": "000000018150.jpg",
+"providerRank": 1,
+"rank": 8,
+"confidence": 1,
+"why_match": "Two people are wearing blue clothing, including a child in a solid blue shirt.",
+"visible_evidence": "A child on the right is wearing a long-sleeved blue shirt; a man on the left is wearing a blue patterned zip-up hoodie.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/047-000000018150.jpg",
+"batch": 10
+},
+{
+"provider": "cerebras",
+"filename": "000000026690.jpg",
+"providerRank": 1,
+"rank": 9,
+"confidence": 0.9,
+"why_match": "A man is visible in the crowd wearing a blue t-shirt.",
+"visible_evidence": "The man holding a camera is wearing a dark blue short-sleeved shirt.",
+"possible_false_positive": "The lighting is dim, so the shirt could be dark grey or black.",
+"imageUrl": "/demo-blueshirt/051-000000026690.jpg",
+"batch": 11
+},
+{
+"provider": "cerebras",
+"filename": "000000156071.jpg",
+"providerRank": 1,
+"rank": 10,
+"confidence": 0.8,
+"why_match": "There is a person in the background wearing a light blue shirt.",
+"visible_evidence": "A person standing near the black vehicle in the background is wearing a light blue button-down shirt.",
+"possible_false_positive": "The person is small and in the background, making the color slightly ambiguous.",
+"imageUrl": "/demo-blueshirt/058-000000156071.jpg",
+"batch": 12
+}
+]
+},
+"gemini": {
+"provider": "openrouter",
+"panelProvider": "gemini",
+"status": "complete",
+"totalLatencyMs": 212981,
+"model": "google/gemma-4-31b-it:free",
+"providerRoute": "openrouter",
+"matches": [
+{
+"provider": "openrouter",
+"filename": "000000030504.jpg",
+"providerRank": 1,
+"rank": 1,
+"confidence": 0.9,
+"why_match": "The person is wearing a light blue shirt under their skiing gear.",
+"visible_evidence": "A light blue garment is visible on the person's torso beneath the black outer layer and backpack straps.",
+"possible_false_positive": "The color could be a very light grey or white depending on lighting.",
+"imageUrl": "/demo-blueshirt/004-000000030504.jpg",
+"batch": 1
+},
+{
+"provider": "openrouter",
+"filename": "000000076625.jpg",
+"providerRank": 1,
+"rank": 2,
+"confidence": 0.7,
+"why_match": "There is a person in the background wearing a blue shirt.",
+"visible_evidence": "A person standing near the train is wearing a dark blue short-sleeved shirt.",
+"possible_false_positive": "The shirt might be black or dark grey due to lighting.",
+"imageUrl": "/demo-blueshirt/011-000000076625.jpg",
+"batch": 3
+},
+{
+"provider": "openrouter",
+"filename": "000000037751.jpg",
+"providerRank": 1,
+"rank": 3,
+"confidence": 0.8,
+"why_match": "A person in the background is wearing a blue shirt.",
+"visible_evidence": "A man standing behind the woman in costume is wearing a blue t-shirt.",
+"possible_false_positive": "The shirt color could be a dark purple or grey depending on lighting.",
+"imageUrl": "/demo-blueshirt/020-000000037751.jpg",
+"batch": 4
+},
+{
+"provider": "openrouter",
+"filename": "000000034139.jpg",
+"providerRank": 1,
+"rank": 4,
+"confidence": 0.95,
+"why_match": "A woman is clearly visible wearing a bright blue jacket/shirt.",
+"visible_evidence": "The woman standing next to the man is wearing a blue upper garment.",
+"possible_false_positive": "The garment could be classified as a jacket rather than a shirt.",
+"imageUrl": "/demo-blueshirt/024-000000034139.jpg",
+"batch": 5
+},
+{
+"provider": "openrouter",
+"filename": "000000093437.jpg",
+"providerRank": 1,
+"rank": 5,
+"confidence": 0.9,
+"why_match": "The person is wearing a blue denim-style shirt.",
+"visible_evidence": "A man wearing a blue button-down denim shirt.",
+"possible_false_positive": "The shirt could be considered a jacket or overshirt.",
+"imageUrl": "/demo-blueshirt/026-000000093437.jpg",
+"batch": 6
+},
+{
+"provider": "openrouter",
+"filename": "000000158227.jpg",
+"providerRank": 1,
+"rank": 6,
+"confidence": 1,
+"why_match": "The image shows a young person wearing a dark blue t-shirt.",
+"visible_evidence": "A child wearing a navy blue shirt with red lettering, holding a baseball bat.",
+"possible_false_positive": "The shirt is a very dark navy, which could be mistaken for black in some lighting.",
+"imageUrl": "/demo-blueshirt/031-000000158227.jpg",
+"batch": 7
+},
+{
+"provider": "openrouter",
+"filename": "000000196141.jpg",
+"providerRank": 1,
+"rank": 7,
+"confidence": 1,
+"why_match": "A baseball catcher is clearly wearing a bright blue jersey.",
+"visible_evidence": "The person in the foreground on the right is wearing a blue shirt with the number 13 on the back.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/039-000000196141.jpg",
+"batch": 8
+},
+{
+"provider": "openrouter",
+"filename": "000000195842.jpg",
+"providerRank": 1,
+"rank": 8,
+"confidence": 1,
+"why_match": "The person is clearly wearing a blue long-sleeved shirt.",
+"visible_evidence": "A person standing on the right side of the image wearing a blue shirt and black pants.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/044-000000195842.jpg",
+"batch": 9
+},
+{
+"provider": "openrouter",
+"filename": "000000018150.jpg",
+"providerRank": 1,
+"rank": 9,
+"confidence": 1,
+"why_match": "Two people are wearing blue tops.",
+"visible_evidence": "A man is wearing a blue patterned zip-up hoodie and a child is wearing a solid blue long-sleeved shirt.",
+"possible_false_positive": "none",
+"imageUrl": "/demo-blueshirt/047-000000018150.jpg",
+"batch": 10
+},
+{
+"provider": "openrouter",
+"filename": "000000026690.jpg",
+"providerRank": 1,
+"rank": 10,
+"confidence": 0.9,
+"why_match": "There are multiple people in the background wearing blue shirts.",
+"visible_evidence": "A man in the crowd is wearing a dark blue t-shirt.",
+"possible_false_positive": "The lighting is dim, so the shirt could be black.",
+"imageUrl": "/demo-blueshirt/051-000000026690.jpg",
+"batch": 11
+},
+{
+"provider": "openrouter",
+"filename": "000000156071.jpg",
+"providerRank": 1,
+"rank": 11,
+"confidence": 0.7,
+"why_match": "There is a person in the background wearing a light blue shirt.",
+"visible_evidence": "A person standing in the background, behind the fence, wearing a light blue button-down shirt.",
+"possible_false_positive": "The person is small and far in the background, making the color slightly ambiguous.",
+"imageUrl": "/demo-blueshirt/058-000000156071.jpg",
+"batch": 12
+}
+]
+}
+}
+}

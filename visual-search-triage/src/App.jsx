@@ -144,6 +144,39 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [bothFinished, showcaseDismissed]);
 
+  // Fake demo (add ?demo to the URL): replay the recorded "person wearing blue
+  // shirt" run's finished state and loop end-state -> showcase -> reset, so the
+  // reveal can be screen-recorded without a live API run.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("demo")) return undefined;
+    let cancelled = false;
+    let timer;
+    import("./demoData.json").then((module) => {
+      if (cancelled) return;
+      const data = module.default || module;
+      setDescription(data.description);
+      setFileSummary({ count: data.imageCount, folderName: "", previews: [] });
+      setEvents(data.events);
+      setResults(data.results);
+      setWinnerProvider("cerebras");
+      setRunning(false);
+      const cycle = () => {
+        setShowcase(false);
+        setShowcaseDismissed(true);
+        timer = window.setTimeout(() => {
+          if (cancelled) return;
+          setShowcaseDismissed(false); // lets the real 850ms hold reveal the showcase
+          timer = window.setTimeout(cycle, 6800);
+        }, 2600);
+      };
+      cycle();
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   function applySelectedFiles(files) {
     setError("");
     revokePreviewUrls();

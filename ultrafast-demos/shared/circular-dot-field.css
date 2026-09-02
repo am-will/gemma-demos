@@ -1,0 +1,37 @@
+.q-dot-field {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.q-dot-field::before,
+.q-dot-field::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: clamp(52rem, 90vw, 92rem);
+  aspect-ratio: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(241, 90, 41, .9) 0 1.7px, transparent 2px) 0 0 / 9px 9px;
+  -webkit-mask-image: radial-gradient(circle closest-side at center, #000 0 24%, rgba(0, 0, 0, .88) 38%, rgba(0, 0, 0, .58) 52%, rgba(0, 0, 0, .3) 65%, rgba(0, 0, 0, .12) 76%, rgba(0, 0, 0, .035) 86%, transparent 96%);
+  mask-image: radial-gradient(circle closest-side at center, #000 0 24%, rgba(0, 0, 0, .88) 38%, rgba(0, 0, 0, .58) 52%, rgba(0, 0, 0, .3) 65%, rgba(0, 0, 0, .12) 76%, rgba(0, 0, 0, .035) 86%, transparent 96%);
+}
+
+.q-dot-field::before {
+  left: clamp(-44rem, -35vw, -20rem);
+  bottom: clamp(-44rem, -35vw, -20rem);
+}
+
+.q-dot-field::after {
+  top: clamp(-44rem, -35vw, -20rem);
+  right: clamp(-44rem, -35vw, -20rem);
+}
+
+@media (max-width: 700px) {
+  .q-dot-field::before,
+  .q-dot-field::after {
+    width: 58rem;
+    background-size: 8px 8px;
+  }
+}

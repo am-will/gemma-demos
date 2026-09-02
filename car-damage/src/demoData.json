@@ -1,0 +1,952 @@
+{
+"video": {
+"name": "3472.mp4",
+"sizeLabel": "309.7 MB",
+"posterUrl": "/demo-3472/poster.jpg"
+},
+"frameCount": 17,
+"events": [
+{
+"provider": "cerebras",
+"phase": "boot",
+"message": "Agent online with model gemma-4-31b",
+"at": "2026-06-19T01:55:43.000"
+},
+{
+"provider": "cerebras",
+"phase": "command",
+"message": "curl -s https://api.cerebras.ai/v1/chat/completions \\\n  -H \"Authorization: Bearer $CEREBRAS_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"gemma-4-31b\",\"messages\":[{\"role\":\"user\",\"content\":[17 sampled image_url parts in multimodal batches of 3, {\"type\":\"text\",\"text\":\"damage inspection prompt\"}]}]}'",
+"at": "2026-06-19T01:55:43.100"
+},
+{
+"provider": "cerebras",
+"phase": "batch",
+"message": "Cerebras will inspect 17 frames in 6 multimodal batches of up to 3",
+"at": "2026-06-19T01:55:43.200"
+},
+{
+"provider": "cerebras",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 1/6 with 3 frames",
+"at": "2026-06-19T01:55:43.300"
+},
+{
+"provider": "cerebras",
+"type": "partial_result",
+"completed": 3,
+"total": 17,
+"at": "2026-06-19T01:55:43.900"
+},
+{
+"provider": "cerebras",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 2/6 with 3 frames",
+"at": "2026-06-19T01:55:43.900"
+},
+{
+"provider": "cerebras",
+"type": "partial_result",
+"completed": 6,
+"total": 17,
+"at": "2026-06-19T01:55:44.800"
+},
+{
+"provider": "cerebras",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 3/6 with 3 frames",
+"at": "2026-06-19T01:55:44.800"
+},
+{
+"provider": "cerebras",
+"type": "partial_result",
+"completed": 9,
+"total": 17,
+"at": "2026-06-19T01:55:45.700"
+},
+{
+"provider": "cerebras",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 4/6 with 3 frames",
+"at": "2026-06-19T01:55:45.700"
+},
+{
+"provider": "cerebras",
+"type": "partial_result",
+"completed": 12,
+"total": 17,
+"at": "2026-06-19T01:55:46.900"
+},
+{
+"provider": "cerebras",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 5/6 with 3 frames",
+"at": "2026-06-19T01:55:46.900"
+},
+{
+"provider": "cerebras",
+"type": "partial_result",
+"completed": 15,
+"total": 17,
+"at": "2026-06-19T01:55:47.900"
+},
+{
+"provider": "cerebras",
+"phase": "dispatch",
+"message": "POST https://api.cerebras.ai/v1/chat/completions batch 6/6 with 2 frames",
+"at": "2026-06-19T01:55:47.900"
+},
+{
+"provider": "cerebras",
+"type": "partial_result",
+"completed": 17,
+"total": 17,
+"at": "2026-06-19T01:55:48.600"
+},
+{
+"provider": "cerebras",
+"phase": "response",
+"message": "17 frames inspected in 5.6s",
+"at": "2026-06-19T01:55:48.750"
+},
+{
+"provider": "cerebras",
+"type": "provider_done",
+"status": "complete",
+"detections": [
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{}
+],
+"at": "2026-06-19T01:55:48.900"
+},
+{
+"provider": "gpu",
+"phase": "boot",
+"message": "Agent online with model google/gemma-4-31b-it",
+"at": "2026-06-19T01:55:44.000"
+},
+{
+"provider": "gpu",
+"phase": "command",
+"message": "curl -s https://gpu.endpoint/v1/chat/completions \\\n  -H \"Authorization: Bearer $GPU_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"google/gemma-4-31b-it\",\"messages\":[{\"role\":\"user\",\"content\":[17 sampled image_url parts in multimodal batches of 3, {\"type\":\"text\",\"text\":\"damage inspection prompt\"}]}]}'",
+"at": "2026-06-19T01:55:44.100"
+},
+{
+"provider": "gpu",
+"phase": "batch",
+"message": "GPU will inspect 17 frames in 6 multimodal batches of up to 3",
+"at": "2026-06-19T01:55:44.200"
+},
+{
+"provider": "gpu",
+"phase": "dispatch",
+"message": "POST https://gpu.endpoint/v1/chat/completions batch 1/6 with 3 frames",
+"at": "2026-06-19T01:55:44.300"
+},
+{
+"provider": "gpu",
+"type": "partial_result",
+"completed": 3,
+"total": 17,
+"at": "2026-06-19T01:55:58.000"
+},
+{
+"provider": "gpu",
+"phase": "dispatch",
+"message": "POST https://gpu.endpoint/v1/chat/completions batch 2/6 with 3 frames",
+"at": "2026-06-19T01:55:58.000"
+},
+{
+"provider": "gpu",
+"type": "partial_result",
+"completed": 6,
+"total": 17,
+"at": "2026-06-19T01:56:14.000"
+},
+{
+"provider": "gpu",
+"phase": "dispatch",
+"message": "POST https://gpu.endpoint/v1/chat/completions batch 3/6 with 3 frames",
+"at": "2026-06-19T01:56:14.000"
+},
+{
+"provider": "gpu",
+"type": "partial_result",
+"completed": 9,
+"total": 17,
+"at": "2026-06-19T01:56:30.000"
+},
+{
+"provider": "gpu",
+"phase": "dispatch",
+"message": "POST https://gpu.endpoint/v1/chat/completions batch 4/6 with 3 frames",
+"at": "2026-06-19T01:56:30.000"
+},
+{
+"provider": "gpu",
+"type": "partial_result",
+"completed": 12,
+"total": 17,
+"at": "2026-06-19T01:56:50.000"
+},
+{
+"provider": "gpu",
+"phase": "dispatch",
+"message": "POST https://gpu.endpoint/v1/chat/completions batch 5/6 with 3 frames",
+"at": "2026-06-19T01:56:50.000"
+},
+{
+"provider": "gpu",
+"type": "partial_result",
+"completed": 15,
+"total": 17,
+"at": "2026-06-19T01:57:08.000"
+},
+{
+"provider": "gpu",
+"phase": "dispatch",
+"message": "POST https://gpu.endpoint/v1/chat/completions batch 6/6 with 2 frames",
+"at": "2026-06-19T01:57:08.000"
+},
+{
+"provider": "gpu",
+"type": "partial_result",
+"completed": 17,
+"total": 17,
+"at": "2026-06-19T01:57:23.000"
+},
+{
+"provider": "gpu",
+"phase": "response",
+"message": "17 frames inspected in 99s",
+"at": "2026-06-19T01:57:23.150"
+},
+{
+"provider": "gpu",
+"type": "provider_done",
+"status": "complete",
+"detections": [
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{},
+{}
+],
+"at": "2026-06-19T01:57:23.300"
+}
+],
+"results": {
+"cerebras": {
+"provider": "cerebras",
+"status": "complete",
+"totalLatencyMs": 5947,
+"model": "gemma-4-31b",
+"detections": [
+{
+"label": "bumper scuff",
+"damageType": "scuff",
+"confidence": 0.95,
+"severity": "minor",
+"location": "front bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.45,
+"y": 0.38,
+"w": 0.08,
+"h": 0.12
+},
+"evidence": "visible black abrasion and paint loss on the bumper corner",
+"frameNumber": 1,
+"sourceFrame": "frame-00001.jpg",
+"imageNumber": 1,
+"imageLabel": "Image 1",
+"imageFilename": "damage-01-bumper-scuff.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-01-bumper-scuff.jpg"
+},
+{
+"label": "bumper scratch",
+"damageType": "scratch",
+"confidence": 0.9,
+"severity": "minor",
+"location": "front bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.64,
+"y": 0.41,
+"w": 0.035,
+"h": 0.15
+},
+"evidence": "vertical dark scratch mark on the bumper surface",
+"frameNumber": 1,
+"sourceFrame": "frame-00001.jpg",
+"imageNumber": 2,
+"imageLabel": "Image 2",
+"imageFilename": "damage-02-bumper-scratch.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-02-bumper-scratch.jpg"
+},
+{
+"label": "bumper scuff",
+"damageType": "scuff",
+"confidence": 0.8,
+"severity": "minor",
+"location": "front bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0,
+"y": 0.72,
+"w": 0.08,
+"h": 0.1
+},
+"evidence": "dark scuff marks visible on the far left edge of the bumper",
+"frameNumber": 2,
+"sourceFrame": "frame-00002.jpg",
+"imageNumber": 3,
+"imageLabel": "Image 3",
+"imageFilename": "damage-03-bumper-scuff.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-03-bumper-scuff.jpg"
+},
+{
+"label": "door dent",
+"damageType": "dent",
+"confidence": 0.65,
+"severity": "minor",
+"location": "front driver door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.51,
+"y": 0.33,
+"w": 0.035,
+"h": 0.04
+},
+"evidence": "small concave dimple visible in the reflection on the upper door panel",
+"frameNumber": 5,
+"sourceFrame": "frame-00005.jpg",
+"imageNumber": 4,
+"imageLabel": "Image 4",
+"imageFilename": "damage-04-door-dent.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-04-door-dent.jpg"
+},
+{
+"label": "door dent",
+"damageType": "dent",
+"confidence": 0.7,
+"severity": "minor",
+"location": "front driver door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.31,
+"y": 0.27,
+"w": 0.035,
+"h": 0.05
+},
+"evidence": "small circular depression causing a warp in the highlight band on the door panel",
+"frameNumber": 6,
+"sourceFrame": "frame-00006.jpg",
+"imageNumber": 5,
+"imageLabel": "Image 5",
+"imageFilename": "damage-05-door-dent.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-05-door-dent.jpg"
+},
+{
+"label": "door dent",
+"damageType": "dent",
+"confidence": 0.65,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.75,
+"y": 0.35,
+"w": 0.1,
+"h": 0.2
+},
+"evidence": "warped highlight and concave shadow on the door panel",
+"frameNumber": 13,
+"sourceFrame": "frame-00013.jpg",
+"imageNumber": 6,
+"imageLabel": "Image 6",
+"imageFilename": "damage-06-door-dent.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-06-door-dent.jpg"
+},
+{
+"label": "door dent",
+"damageType": "dent",
+"confidence": 0.7,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.55,
+"y": 0.4,
+"w": 0.15,
+"h": 0.2
+},
+"evidence": "visible deformation and distorted reflections on the door panel",
+"frameNumber": 14,
+"sourceFrame": "frame-00014.jpg",
+"imageNumber": 7,
+"imageLabel": "Image 7",
+"imageFilename": "damage-07-door-dent.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-07-door-dent.jpg"
+},
+{
+"label": "door dent",
+"damageType": "dent",
+"confidence": 0.6,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.3,
+"y": 0.45,
+"w": 0.15,
+"h": 0.2
+},
+"evidence": "subtle concave dimple and warped reflection lines",
+"frameNumber": 15,
+"sourceFrame": "frame-00015.jpg",
+"imageNumber": 8,
+"imageLabel": "Image 8",
+"imageFilename": "damage-08-door-dent.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-08-door-dent.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.85,
+"severity": "minor",
+"location": "front bumper corner",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.51,
+"y": 0.51,
+"w": 0.05,
+"h": 0.07
+},
+"evidence": "dark abrasion marks on the bumper corner",
+"frameNumber": 17,
+"sourceFrame": "frame-00017.jpg",
+"imageNumber": 9,
+"imageLabel": "Image 9",
+"imageFilename": "damage-09-scuff.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-09-scuff.jpg"
+},
+{
+"label": "scratch",
+"damageType": "scratch",
+"confidence": 0.78,
+"severity": "minor",
+"location": "front bumper",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.69,
+"y": 0.51,
+"w": 0.04,
+"h": 0.12
+},
+"evidence": "vertical dark scratch line on the bumper surface",
+"frameNumber": 17,
+"sourceFrame": "frame-00017.jpg",
+"imageNumber": 10,
+"imageLabel": "Image 10",
+"imageFilename": "damage-10-scratch.jpg",
+"imageUrl": "/demo-3472/cerebras/damage-10-scratch.jpg"
+}
+]
+},
+"gpu": {
+"provider": "gpu",
+"status": "complete",
+"totalLatencyMs": 99762,
+"model": "google/gemma-4-31b-it",
+"detections": [
+{
+"label": "bumper scuff",
+"damageType": "scuff",
+"confidence": 0.95,
+"severity": "moderate",
+"location": "front bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.46,
+"y": 0.4,
+"w": 0.06,
+"h": 0.08
+},
+"evidence": "dark abrasion and paint loss on the bumper corner",
+"frameNumber": 1,
+"sourceFrame": "frame-00001.jpg",
+"imageNumber": 1,
+"imageLabel": "Image 1",
+"imageFilename": "damage-01-bumper-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-01-bumper-scuff.jpg"
+},
+{
+"label": "bumper scratch",
+"damageType": "scratch",
+"confidence": 0.9,
+"severity": "moderate",
+"location": "front bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.64,
+"y": 0.42,
+"w": 0.04,
+"h": 0.15
+},
+"evidence": "vertical dark scratch/scuff mark on the bumper face",
+"frameNumber": 1,
+"sourceFrame": "frame-00001.jpg",
+"imageNumber": 2,
+"imageLabel": "Image 2",
+"imageFilename": "damage-02-bumper-scratch.jpg",
+"imageUrl": "/demo-3472/gpu/damage-02-bumper-scratch.jpg"
+},
+{
+"label": "bumper scuff",
+"damageType": "scuff",
+"confidence": 0.9,
+"severity": "moderate",
+"location": "front bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0,
+"y": 0.74,
+"w": 0.1,
+"h": 0.1
+},
+"evidence": "visible dark paint transfer and abrasion on the bumper edge",
+"frameNumber": 2,
+"sourceFrame": "frame-00002.jpg",
+"imageNumber": 3,
+"imageLabel": "Image 3",
+"imageFilename": "damage-03-bumper-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-03-bumper-scuff.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.65,
+"severity": "minor",
+"location": "driver side front fender",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.33,
+"y": 0.42,
+"w": 0.05,
+"h": 0.035
+},
+"evidence": "faint horizontal abrasion mark on the fender panel",
+"frameNumber": 5,
+"sourceFrame": "frame-00005.jpg",
+"imageNumber": 4,
+"imageLabel": "Image 4",
+"imageFilename": "damage-04-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-04-scuff.jpg"
+},
+{
+"label": "scratch",
+"damageType": "scratch",
+"confidence": 0.55,
+"severity": "minor",
+"location": "driver side lower door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.52,
+"y": 0.64,
+"w": 0.08,
+"h": 0.035
+},
+"evidence": "thin linear mark visible on the lower door panel",
+"frameNumber": 5,
+"sourceFrame": "frame-00005.jpg",
+"imageNumber": 5,
+"imageLabel": "Image 5",
+"imageFilename": "damage-05-scratch.jpg",
+"imageUrl": "/demo-3472/gpu/damage-05-scratch.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.7,
+"severity": "minor",
+"location": "driver side rocker panel",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.28,
+"y": 0.71,
+"w": 0.06,
+"h": 0.04
+},
+"evidence": "scraped paint/plastic on the lower rocker trim",
+"frameNumber": 6,
+"sourceFrame": "frame-00006.jpg",
+"imageNumber": 6,
+"imageLabel": "Image 6",
+"imageFilename": "damage-06-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-06-scuff.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.6,
+"severity": "minor",
+"location": "driver side front fender",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.27,
+"y": 0.51,
+"w": 0.04,
+"h": 0.035
+},
+"evidence": "visible abrasion mark near the wheel arch",
+"frameNumber": 6,
+"sourceFrame": "frame-00006.jpg",
+"imageNumber": 7,
+"imageLabel": "Image 7",
+"imageFilename": "damage-07-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-07-scuff.jpg"
+},
+{
+"label": "scratch",
+"damageType": "scratch",
+"confidence": 0.5,
+"severity": "minor",
+"location": "driver side lower door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.32,
+"y": 0.63,
+"w": 0.07,
+"h": 0.04
+},
+"evidence": "linear surface mark on the lower door panel",
+"frameNumber": 6,
+"sourceFrame": "frame-00006.jpg",
+"imageNumber": 8,
+"imageLabel": "Image 8",
+"imageFilename": "damage-08-scratch.jpg",
+"imageUrl": "/demo-3472/gpu/damage-08-scratch.jpg"
+},
+{
+"label": "scratch",
+"damageType": "scratch",
+"confidence": 0.65,
+"severity": "minor",
+"location": "driver door lower panel",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.03,
+"y": 0.54,
+"w": 0.08,
+"h": 0.05
+},
+"evidence": "thin horizontal line visible on the lower part of the driver door",
+"frameNumber": 7,
+"sourceFrame": "frame-00007.jpg",
+"imageNumber": 9,
+"imageLabel": "Image 9",
+"imageFilename": "damage-09-scratch.jpg",
+"imageUrl": "/demo-3472/gpu/damage-09-scratch.jpg"
+},
+{
+"label": "scratch",
+"damageType": "scratch",
+"confidence": 0.6,
+"severity": "minor",
+"location": "driver door lower panel",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.04,
+"y": 0.56,
+"w": 0.07,
+"h": 0.04
+},
+"evidence": "thin horizontal mark on the lower door panel",
+"frameNumber": 8,
+"sourceFrame": "frame-00008.jpg",
+"imageNumber": 10,
+"imageLabel": "Image 10",
+"imageFilename": "damage-10-scratch.jpg",
+"imageUrl": "/demo-3472/gpu/damage-10-scratch.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.65,
+"severity": "minor",
+"location": "rear bumper passenger side",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.62,
+"y": 0.63,
+"w": 0.05,
+"h": 0.035
+},
+"evidence": "small dark abrasion mark on the silver paint of the rear bumper",
+"frameNumber": 12,
+"sourceFrame": "frame-00012.jpg",
+"imageNumber": 11,
+"imageLabel": "Image 11",
+"imageFilename": "damage-11-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-11-scuff.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.65,
+"severity": "minor",
+"location": "rear quarter panel",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.53,
+"y": 0.41,
+"w": 0.08,
+"h": 0.05
+},
+"evidence": "faint horizontal abrasion mark on the silver paint above the wheel arch",
+"frameNumber": 13,
+"sourceFrame": "frame-00013.jpg",
+"imageNumber": 12,
+"imageLabel": "Image 12",
+"imageFilename": "damage-12-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-12-scuff.jpg"
+},
+{
+"label": "dent",
+"damageType": "dent",
+"confidence": 0.55,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.81,
+"y": 0.39,
+"w": 0.06,
+"h": 0.12
+},
+"evidence": "warped reflection and subtle concave dimple on the door panel",
+"frameNumber": 13,
+"sourceFrame": "frame-00013.jpg",
+"imageNumber": 13,
+"imageLabel": "Image 13",
+"imageFilename": "damage-13-dent.jpg",
+"imageUrl": "/demo-3472/gpu/damage-13-dent.jpg"
+},
+{
+"label": "paint transfer",
+"damageType": "paint_transfer",
+"confidence": 0.7,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.57,
+"y": 0.49,
+"w": 0.035,
+"h": 0.04
+},
+"evidence": "small, distinct greyish mark/spot on the silver paint",
+"frameNumber": 14,
+"sourceFrame": "frame-00014.jpg",
+"imageNumber": 14,
+"imageLabel": "Image 14",
+"imageFilename": "damage-14-paint-transfer.jpg",
+"imageUrl": "/demo-3472/gpu/damage-14-paint-transfer.jpg"
+},
+{
+"label": "scuff",
+"damageType": "scuff",
+"confidence": 0.6,
+"severity": "minor",
+"location": "rear quarter panel",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.34,
+"y": 0.44,
+"w": 0.07,
+"h": 0.04
+},
+"evidence": "thin horizontal scuff mark above the wheel arch",
+"frameNumber": 14,
+"sourceFrame": "frame-00014.jpg",
+"imageNumber": 15,
+"imageLabel": "Image 15",
+"imageFilename": "damage-15-scuff.jpg",
+"imageUrl": "/demo-3472/gpu/damage-15-scuff.jpg"
+},
+{
+"label": "dent",
+"damageType": "dent",
+"confidence": 0.5,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.62,
+"y": 0.45,
+"w": 0.15,
+"h": 0.2
+},
+"evidence": "distorted highlight lines indicating a shallow depression in the door panel",
+"frameNumber": 14,
+"sourceFrame": "frame-00014.jpg",
+"imageNumber": 16,
+"imageLabel": "Image 16",
+"imageFilename": "damage-16-dent.jpg",
+"imageUrl": "/demo-3472/gpu/damage-16-dent.jpg"
+},
+{
+"label": "paint transfer",
+"damageType": "paint_transfer",
+"confidence": 0.7,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.27,
+"y": 0.49,
+"w": 0.035,
+"h": 0.04
+},
+"evidence": "small greyish spot of paint transfer or chip on the door",
+"frameNumber": 15,
+"sourceFrame": "frame-00015.jpg",
+"imageNumber": 17,
+"imageLabel": "Image 17",
+"imageFilename": "damage-17-paint-transfer.jpg",
+"imageUrl": "/demo-3472/gpu/damage-17-paint-transfer.jpg"
+},
+{
+"label": "dent",
+"damageType": "dent",
+"confidence": 0.5,
+"severity": "minor",
+"location": "rear passenger door",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.31,
+"y": 0.46,
+"w": 0.15,
+"h": 0.2
+},
+"evidence": "subtle warping of the body line and reflection on the door panel",
+"frameNumber": 15,
+"sourceFrame": "frame-00015.jpg",
+"imageNumber": 18,
+"imageLabel": "Image 18",
+"imageFilename": "damage-18-dent.jpg",
+"imageUrl": "/demo-3472/gpu/damage-18-dent.jpg"
+},
+{
+"label": "fender dent",
+"damageType": "dent",
+"confidence": 0.75,
+"severity": "minor",
+"location": "front passenger fender",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.75,
+"y": 0.4,
+"w": 0.2,
+"h": 0.2
+},
+"evidence": "warped highlight bands and concave dimple on the fender panel above the wheel arch",
+"frameNumber": 16,
+"sourceFrame": "frame-00016.jpg",
+"imageNumber": 19,
+"imageLabel": "Image 19",
+"imageFilename": "damage-19-fender-dent.jpg",
+"imageUrl": "/demo-3472/gpu/damage-19-fender-dent.jpg"
+},
+{
+"label": "bumper scuffs",
+"damageType": "scuff",
+"confidence": 0.9,
+"severity": "moderate",
+"location": "front passenger bumper",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.5,
+"y": 0.45,
+"w": 0.2,
+"h": 0.15
+},
+"evidence": "dark abrasion marks and paint transfer on the bumper corner",
+"frameNumber": 17,
+"sourceFrame": "frame-00017.jpg",
+"imageNumber": 20,
+"imageLabel": "Image 20",
+"imageFilename": "damage-20-bumper-scuffs.jpg",
+"imageUrl": "/demo-3472/gpu/damage-20-bumper-scuffs.jpg"
+},
+{
+"label": "bumper scratch",
+"damageType": "scratch",
+"confidence": 0.85,
+"severity": "minor",
+"location": "front passenger bumper",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.68,
+"y": 0.5,
+"w": 0.05,
+"h": 0.1
+},
+"evidence": "vertical dark scratch line on the bumper fascia",
+"frameNumber": 17,
+"sourceFrame": "frame-00017.jpg",
+"imageNumber": 21,
+"imageLabel": "Image 21",
+"imageFilename": "damage-21-bumper-scratch.jpg",
+"imageUrl": "/demo-3472/gpu/damage-21-bumper-scratch.jpg"
+},
+{
+"label": "fender dent",
+"damageType": "dent",
+"confidence": 0.8,
+"severity": "minor",
+"location": "front passenger fender",
+"bboxApproximate": false,
+"bbox": {
+"x": 0.35,
+"y": 0.35,
+"w": 0.2,
+"h": 0.15
+},
+"evidence": "visible deformation and warped reflection on the upper fender",
+"frameNumber": 17,
+"sourceFrame": "frame-00017.jpg",
+"imageNumber": 22,
+"imageLabel": "Image 22",
+"imageFilename": "damage-22-fender-dent.jpg",
+"imageUrl": "/demo-3472/gpu/damage-22-fender-dent.jpg"
+}
+]
+}
+}
+}

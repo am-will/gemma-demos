@@ -1,0 +1,3 @@
+public/*.pdf
+.cache/
+dist/

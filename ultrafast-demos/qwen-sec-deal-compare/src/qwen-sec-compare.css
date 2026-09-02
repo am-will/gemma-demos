@@ -1,0 +1,20 @@
+@import "../../qwen-live-earnings-compare/src/qwen-earnings-compare.css";
+
+.qs-shell .qd8-titlebar > div:first-child span { color: #ff9c7b; }
+
+@media (min-width: 861px) {
+  .qs-shell {
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100dvh;
+  }
+
+  .qs-shell .qd8-race,
+  .qs-shell .qd8-lane {
+    height: 100%;
+  }
+
+  .qs-shell .qd8-lane {
+    grid-template-rows: 5.25rem auto minmax(0, 1fr);
+  }
+}

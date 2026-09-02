@@ -8,7 +8,12 @@
     "living-incident",
     "earnings-shock-desk",
     "fomc-minutes-shock-map",
-    "sec-material-event-radar"
+    "sec-material-event-radar",
+    "qwen-sec-visual-review",
+    "qwen-sec-deal-review",
+    "qwen-sec-deal-compare",
+    "qwen-live-earnings-review",
+    "qwen-live-earnings-compare"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -17,7 +22,12 @@
     "dev:incident": "npm run dev --workspace living-incident",
     "dev:earnings-shock": "npm run dev --workspace earnings-shock-desk",
     "dev:fomc": "npm run dev --workspace fomc-minutes-shock-map",
-    "dev:sec-radar": "npm run dev --workspace sec-material-event-radar"
+    "dev:sec-radar": "npm run dev --workspace sec-material-event-radar",
+    "dev:qwen-sec": "npm run dev --workspace qwen-sec-visual-review",
+    "dev:qwen-deal": "npm run dev --workspace qwen-sec-deal-review",
+    "dev:qwen-deal-compare": "npm run dev --workspace qwen-sec-deal-compare",
+    "dev:qwen-earnings": "npm run dev --workspace qwen-live-earnings-review",
+    "dev:qwen-earnings-compare": "npm run dev --workspace qwen-live-earnings-compare"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

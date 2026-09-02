@@ -1,0 +1,172 @@
+@import "./circular-dot-field.css";
+
+.prompt-intro {
+  --prompt-ink: #212121;
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vw, 5rem);
+  color: var(--prompt-ink);
+  background: #f0f0f0;
+  font-family: "Manrope", sans-serif;
+}
+
+.prompt-intro__composer {
+  --prompt-attachment-width: clamp(10rem, 14vw, 16.5rem);
+  --prompt-attachment-gutter: clamp(2.75rem, 5.5vw, 6rem);
+  position: relative;
+  z-index: 1;
+  width: min(76vw, 91rem);
+  min-height: clamp(15rem, 28vh, 18.85rem);
+  padding: clamp(1.5rem, 3vw, 2.45rem);
+  overflow: visible;
+  background: white;
+  border: 1px solid rgba(33, 33, 33, .04);
+  border-radius: clamp(1.25rem, 1.6vw, 1.9rem);
+  box-shadow: 0 .35rem 1.15rem rgba(0, 0, 0, .17);
+  clip-path: circle(150% at 94% 82%);
+  transition: clip-path .68s cubic-bezier(.76, 0, .24, 1), opacity .48s ease, transform .68s cubic-bezier(.76, 0, .24, 1), box-shadow .4s ease;
+}
+
+.prompt-intro__copy {
+  width: 100%;
+  max-width: 67rem;
+  min-height: 3.5em;
+  padding-right: calc(var(--prompt-attachment-width) + var(--prompt-attachment-gutter));
+  font-size: clamp(1.45rem, 2.15vw, 2.56rem);
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -.035em;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+.prompt-intro__caret {
+  display: inline-block;
+  width: .08em;
+  height: 1em;
+  margin-left: .08em;
+  vertical-align: -.12em;
+  background: var(--prompt-ink);
+  animation: promptCaret .7s steps(1, end) infinite;
+}
+
+.prompt-intro__attachments {
+  position: absolute;
+  top: clamp(1.4rem, 2.25vw, 2.8rem);
+  right: clamp(2.25rem, 4vw, 4.5rem);
+  width: var(--prompt-attachment-width);
+  aspect-ratio: 16 / 9;
+}
+
+.prompt-intro__attachments figure {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #d7d7d7;
+  border-radius: .3rem;
+  box-shadow: .16rem .16rem .35rem rgba(0, 0, 0, .22);
+  transform: translate(calc(var(--stack-index) * .62rem), calc(var(--stack-index) * .7rem));
+}
+
+.prompt-intro__attachments figure:first-child { z-index: 3; }
+.prompt-intro__attachments figure:nth-child(2) { z-index: 2; }
+.prompt-intro__attachments figure:nth-child(3) { z-index: 1; }
+.prompt-intro__attachments img { width: 100%; height: 100%; object-fit: contain; }
+
+.prompt-intro__add {
+  position: absolute;
+  left: clamp(1.5rem, 3vw, 2.45rem);
+  bottom: clamp(1.2rem, 2.4vw, 2rem);
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.prompt-intro__actions {
+  position: absolute;
+  right: clamp(1.25rem, 2.25vw, 2.15rem);
+  bottom: clamp(1rem, 1.8vw, 1.55rem);
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+}
+
+.prompt-intro__microphone,
+.prompt-intro__send img {
+  width: 2.55rem;
+  height: 2.75rem;
+  object-fit: fill;
+  opacity: .52;
+}
+
+.prompt-intro__send {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+.prompt-intro__send img { width: 100%; height: 100%; }
+
+.prompt-intro__pointer {
+  position: absolute;
+  z-index: 5;
+  right: -5rem;
+  bottom: -5rem;
+  width: 1.75rem;
+  height: 2.15rem;
+  opacity: 0;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, .9)) drop-shadow(0 2px 2px rgba(0, 0, 0, .28));
+  transform: rotate(-18deg);
+  transition: right .72s cubic-bezier(.22, .8, .22, 1), bottom .72s cubic-bezier(.22, .8, .22, 1), opacity .12s ease, transform .14s ease;
+}
+
+.prompt-intro__pointer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #222;
+  clip-path: polygon(0 0, 0 100%, 29% 72%, 45% 100%, 61% 91%, 45% 63%, 80% 62%);
+}
+
+.phase-aiming .prompt-intro__pointer,
+.phase-pressing .prompt-intro__pointer {
+  right: clamp(1.7rem, 2.7vw, 2.7rem);
+  bottom: clamp(1.55rem, 2.35vw, 2.25rem);
+  opacity: 1;
+}
+
+.phase-pressing .prompt-intro__pointer { transform: rotate(-18deg) scale(.78); }
+.phase-pressing .prompt-intro__send { animation: promptPress .2s ease both; }
+.phase-sent .prompt-intro__composer {
+  opacity: 0;
+  clip-path: circle(0 at 94% 82%);
+  transform: scale(.94);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+.phase-sent .prompt-intro__pointer { opacity: 0; }
+
+@keyframes promptCaret { 50% { opacity: 0; } }
+@keyframes promptPress { 50% { transform: scale(.88); filter: brightness(.8); } }
+
+@media (max-width: 760px) {
+  .prompt-intro__composer { width: min(92vw, 46rem); min-height: 21rem; }
+  .prompt-intro__copy { width: 100%; max-width: none; padding-right: 0; font-size: clamp(1.2rem, 4vw, 1.65rem); }
+  .prompt-intro__attachments { top: auto; right: 2rem; bottom: 5.2rem; width: 10.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-intro__caret { animation: none; }
+  .prompt-intro__pointer { transition-duration: .01ms; }
+  .prompt-intro__composer { transition-duration: .01ms; }
+}
