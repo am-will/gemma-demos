@@ -96,13 +96,22 @@
   gap: .8rem;
 }
 
-.prompt-intro__microphone,
 .prompt-intro__send img {
   width: 2.55rem;
   height: 2.75rem;
   object-fit: fill;
   opacity: .52;
 }
+
+.prompt-intro__microphone {
+  width: 2.55rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  color: #878787;
+  opacity: .72;
+}
+.prompt-intro__microphone svg { width: 1.65rem; height: 1.65rem; display: block; }
 
 .prompt-intro__send {
   width: 3rem;
@@ -127,6 +136,7 @@
   height: 2.15rem;
   opacity: 0;
   filter: drop-shadow(0 1px 1px rgba(255, 255, 255, .9)) drop-shadow(0 2px 2px rgba(0, 0, 0, .28));
+  transform-origin: 0 0;
   transform: rotate(-18deg);
   transition: right .72s cubic-bezier(.22, .8, .22, 1), bottom .72s cubic-bezier(.22, .8, .22, 1), opacity .12s ease, transform .14s ease;
 }
@@ -141,8 +151,8 @@
 
 .phase-aiming .prompt-intro__pointer,
 .phase-pressing .prompt-intro__pointer {
-  right: clamp(1.7rem, 2.7vw, 2.7rem);
-  bottom: clamp(1.55rem, 2.35vw, 2.25rem);
+  right: calc(clamp(1.25rem, 2.25vw, 2.15rem) - .25rem);
+  bottom: calc(clamp(1rem, 1.8vw, 1.55rem) - .65rem);
   opacity: 1;
 }
 

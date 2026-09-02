@@ -214,13 +214,16 @@ function Lane({ laneId, lane }) {
 export function QwenSecDealCompare() {
   const [showIntro, setShowIntro] = useState(() => new URLSearchParams(window.location.search).get("intro") !== "0");
   const [introCompleted, setIntroCompleted] = useState(false);
+  const [autoStartPending, setAutoStartPending] = useState(false);
   const [status, setStatus] = useState(null);
   const [running, setRunning] = useState(false);
   const [lanes, setLanes] = useState({ openrouter: newLane(), cerebras: newLane() });
   const startedAt = useRef({});
+  const autoStartTimer = useRef(null);
 
   useEffect(() => {
     fetch("/api/status").then((result) => result.json()).then(setStatus).catch(() => setStatus({ connected: false }));
+    return () => window.clearTimeout(autoStartTimer.current);
   }, []);
 
   useEffect(() => {
@@ -273,8 +276,8 @@ export function QwenSecDealCompare() {
     <main className={`qd8-shell qs-shell q-dot-field${introCompleted ? " qd8-scene-enter" : ""}`}>
       <header className="qd8-titlebar">
         <div><h1>SEC Filing Review</h1></div>
-        <div className="qd8-run-summary"><span>{running ? "REVIEW RUNNING" : bothComplete ? "REVIEW COMPLETE" : "READY"}</span><strong>{totalComplete}/{STAGES.length * 2} STEPS</strong></div>
-        <button type="button" className={running ? "is-reviewing" : ""} onClick={runComparison} disabled={running || !status?.connected}>{running ? "Reviewing" : bothComplete ? "Run again" : "Run review"}</button>
+        <div className="qd8-run-summary"><span>{autoStartPending ? "PREPARING REVIEW" : running ? "REVIEW RUNNING" : bothComplete ? "REVIEW COMPLETE" : "READY"}</span><strong>{totalComplete}/{STAGES.length * 2} STEPS</strong></div>
+        <button type="button" className={running || autoStartPending ? "is-reviewing" : ""} onClick={runComparison} disabled={running || autoStartPending || !status?.connected}>{autoStartPending ? "Starting" : running ? "Reviewing" : bothComplete ? "Run again" : "Run review"}</button>
       </header>
 
       <section className="qd8-race" aria-label="Deal fairness comparison">
@@ -294,9 +297,15 @@ export function QwenSecDealCompare() {
         attachments={INTRO_ATTACHMENTS}
         onSend={() => {
           setIntroCompleted(true);
-          void runComparison();
+          setAutoStartPending(true);
         }}
-        onComplete={() => setShowIntro(false)}
+        onComplete={() => {
+          setShowIntro(false);
+          autoStartTimer.current = window.setTimeout(() => {
+            setAutoStartPending(false);
+            void runComparison();
+          }, 500);
+        }}
       />
     </>;
   }

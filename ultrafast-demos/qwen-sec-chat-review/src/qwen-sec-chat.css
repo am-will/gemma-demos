@@ -1,0 +1,300 @@
+@import "../../shared/circular-dot-field.css";
+
+:root {
+  --qchat-orange: #f15a29;
+  --qchat-orange-soft: #ffe7df;
+  --qchat-charcoal: #252525;
+  --qchat-paper: #f2f1ed;
+  --qchat-white: #fff;
+  --qchat-gray: #777873;
+  --qchat-line: #d9d7d0;
+  --qchat-sans: "Manrope", sans-serif;
+  --qchat-mono: "IBM Plex Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { min-width: 0; min-height: 100%; }
+body { margin: 0; background: var(--qchat-paper); }
+button { font: inherit; }
+
+.qchat-app { min-height: 100dvh; font-family: var(--qchat-sans); }
+
+.qchat-brand-mark {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  padding: .28rem;
+  background: white;
+  border: 1px solid rgba(37, 37, 37, .12);
+  border-radius: 50%;
+  box-shadow: 0 .2rem .6rem rgba(25, 25, 25, .1);
+}
+.qchat-brand-mark img { width: 100%; height: 100%; object-fit: contain; }
+
+/* Document scene */
+.qchat-scan {
+  position: fixed;
+  z-index: 11;
+  inset: 0;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  color: white;
+  background: var(--qchat-charcoal);
+  clip-path: circle(0 at 84% 62%);
+  animation: qchatScanReveal .68s linear both;
+}
+
+.qchat-scan-header,
+.qchat-scan-stage { position: relative; z-index: 1; }
+
+.qchat-scan-header {
+  min-height: clamp(5rem, 9vh, 7rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(1rem, 2.3vw, 2.2rem) clamp(1.25rem, 3.2vw, 3.4rem);
+  border-bottom: 1px solid rgba(255, 255, 255, .15);
+}
+
+.qchat-scan-header > div:first-child { display: grid; gap: .28rem; }
+.qchat-scan-header span,
+.qchat-scan-status span {
+  font: 600 .6rem/1.2 var(--qchat-mono);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.qchat-scan-header > div:first-child span { color: #ff9c7b; }
+.qchat-scan-header > div:first-child strong { font: 650 clamp(1.4rem, 2.7vw, 2.7rem)/1 var(--qchat-sans); letter-spacing: -.05em; }
+
+.qchat-scan-meter { min-width: min(30vw, 22rem); display: grid; justify-items: end; gap: .5rem; }
+.qchat-scan-meter > i { width: 100%; height: .28rem; overflow: hidden; background: rgba(255, 255, 255, .16); border-radius: 999px; }
+.qchat-scan-meter b { display: block; height: 100%; background: var(--qchat-orange); border-radius: inherit; transition: width .12s linear; }
+
+.qchat-scan-stage {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(23rem, 1.7fr) minmax(12rem, .75fr);
+  align-items: center;
+  gap: clamp(1.3rem, 4vw, 5rem);
+  padding: clamp(1.5rem, 4vw, 4.5rem);
+}
+
+.qchat-scan-document {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 53rem);
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  overflow: hidden;
+  padding: clamp(2rem, 4vw, 3.8rem) clamp(1rem, 2.2vw, 2.2rem) clamp(1rem, 2vw, 1.8rem);
+  background: white;
+  border-radius: clamp(.8rem, 1.4vw, 1.35rem);
+  box-shadow: 0 2rem 5rem rgba(0, 0, 0, .35);
+  animation: qchatPageChange .22s ease both;
+}
+.qchat-scan-document figcaption { position: absolute; top: 1rem; left: 1.2rem; color: #242424; font: 700 clamp(.58rem, .75vw, .78rem)/1.2 var(--qchat-sans); }
+.qchat-scan-document figcaption::before { content: ""; display: inline-block; width: .25rem; height: .8rem; margin-right: .5rem; vertical-align: -.15rem; background: #28b4e9; }
+.qchat-scan-document img { width: 100%; height: 100%; object-fit: contain; }
+.qchat-scan-beam {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto 0 0;
+  width: .45rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffb092 18%, var(--qchat-orange) 50%, #ffb092 82%, rgba(255, 255, 255, 0));
+  box-shadow: 0 0 1.3rem .28rem rgba(241, 90, 41, .48);
+  animation: qchatScanBeam .55s ease-in-out both;
+}
+
+.qchat-scan-status { align-self: end; max-width: 18rem; display: grid; gap: .55rem; padding-bottom: 2rem; }
+.qchat-scan-status span { color: #ff9c7b; }
+.qchat-scan-status strong { font: 550 clamp(1.05rem, 1.8vw, 1.7rem)/1.15 var(--qchat-sans); letter-spacing: -.035em; }
+
+.qchat-scan.is-exiting { animation: qchatScanCollapse .76s cubic-bezier(.65, 0, .35, 1) both; }
+.qchat-scan.is-exiting .qchat-scan-document { animation: qchatDocumentDock .76s cubic-bezier(.65, 0, .35, 1) both; }
+.qchat-scan.is-exiting .qchat-scan-status,
+.qchat-scan.is-exiting .qchat-scan-header { animation: qchatScanChromeOut .3s ease both; }
+
+/* Chat scene */
+.qchat-chat {
+  position: relative;
+  z-index: 1;
+  height: 100dvh;
+  min-height: 38rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  color: var(--qchat-charcoal);
+  background: var(--qchat-paper);
+  animation: qchatChatArrive .72s cubic-bezier(.22, .8, .22, 1) both;
+}
+.qchat-chat.q-dot-field::before,
+.qchat-chat.q-dot-field::after { opacity: .34; }
+.qchat-chat > * { position: relative; z-index: 1; }
+
+.qchat-topbar {
+  min-height: 4.4rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: .75rem clamp(1rem, 2.4vw, 2.4rem);
+  background: rgba(249, 248, 245, .93);
+  border-bottom: 1px solid rgba(37, 37, 37, .11);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.qchat-wordmark { display: flex; align-items: center; gap: .65rem; }
+.qchat-wordmark > strong { font-size: 1.02rem; }
+.qchat-thread-title { justify-self: center; display: grid; justify-items: center; gap: .1rem; }
+.qchat-thread-title strong { font-size: .92rem; }
+.qchat-thread-title span { color: var(--qchat-gray); font: 500 .54rem/1.2 var(--qchat-mono); letter-spacing: .06em; text-transform: uppercase; }
+.qchat-run-status { justify-self: end; padding: .5rem .75rem; color: white; background: var(--qchat-charcoal); border-radius: 999px; font: 550 .58rem/1 var(--qchat-mono); letter-spacing: .05em; text-transform: uppercase; }
+
+.qchat-lanes {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .8rem;
+  padding: .8rem;
+  overflow: hidden;
+}
+
+.qchat-lane {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: rgba(248, 247, 243, .94);
+  border: 1px solid rgba(37, 37, 37, .14);
+  border-radius: 1.15rem;
+  box-shadow: 0 .75rem 2.5rem rgba(25, 25, 25, .11);
+}
+.qchat-lane.orange { border-top: .22rem solid var(--qchat-orange); }
+.qchat-lane.neutral { border-top: .22rem solid #8a8a86; }
+
+.qchat-lane-header {
+  min-height: 4.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .8rem 1rem;
+  background: rgba(255, 255, 255, .78);
+  border-bottom: 1px solid var(--qchat-line);
+}
+.qchat-lane-header > div { min-width: 0; display: grid; gap: .12rem; }
+.qchat-lane-header strong { overflow: hidden; font-size: clamp(.85rem, 1.2vw, 1.05rem); text-overflow: ellipsis; white-space: nowrap; }
+.qchat-lane-header span { color: var(--qchat-gray); font: 500 .49rem/1.2 var(--qchat-mono); letter-spacing: .06em; text-transform: uppercase; }
+.qchat-lane.orange .qchat-lane-header strong { color: var(--qchat-orange); }
+.qchat-lane-clock { flex: 0 0 auto; padding: .5rem .68rem; color: white; background: var(--qchat-charcoal); border-radius: 999px; font: 550 .68rem/1 var(--qchat-mono); font-variant-numeric: tabular-nums; }
+.qchat-lane.orange .qchat-lane-clock { background: var(--qchat-orange); }
+
+.qchat-thread { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #c3c1ba transparent; }
+.qchat-thread-inner { width: min(92%, 34rem); min-height: 100%; display: grid; align-content: start; gap: 1.55rem; margin: 0 auto; padding: clamp(1.4rem, 3.5vh, 2.6rem) 0 2.25rem; }
+
+.qchat-message { min-width: 0; }
+.qchat-user { justify-self: end; width: min(88%, 30rem); display: grid; justify-items: end; gap: .7rem; animation: qchatMessageIn .45s .15s ease both; }
+.qchat-user-copy { padding: .9rem 1.1rem; background: #e5e3de; border-radius: 1.25rem 1.25rem .28rem 1.25rem; font-size: .9rem; line-height: 1.5; }
+.qchat-attachment { width: min(100%, 22rem); display: grid; grid-template-columns: 4rem minmax(0, 1fr); align-items: center; gap: .75rem; padding: .55rem; background: rgba(255, 255, 255, .86); border: 1px solid var(--qchat-line); border-radius: .85rem; box-shadow: 0 .35rem 1rem rgba(25, 25, 25, .06); }
+.qchat-attachment img { width: 4rem; aspect-ratio: 16 / 10; object-fit: cover; background: white; border-radius: .4rem; }
+.qchat-attachment div { min-width: 0; display: grid; gap: .18rem; }
+.qchat-attachment strong { overflow: hidden; font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
+.qchat-attachment span { color: var(--qchat-gray); font: .54rem/1.2 var(--qchat-mono); text-transform: uppercase; }
+
+.qchat-assistant { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .9rem; animation: qchatMessageIn .48s cubic-bezier(.22, .8, .22, 1) both; }
+.qchat-message-body { min-width: 0; display: grid; gap: .65rem; }
+.qchat-message-meta { display: flex; align-items: center; gap: .55rem; }
+.qchat-message-meta strong { font-size: .78rem; }
+.qchat-message-meta span { padding: .25rem .45rem; color: var(--qchat-gray); background: #e8e6e0; border-radius: 999px; font: 550 .48rem/1 var(--qchat-mono); letter-spacing: .04em; text-transform: uppercase; }
+.qchat-message h2 { margin: 0; font: 650 clamp(1rem, 1.35vw, 1.25rem)/1.2 var(--qchat-sans); letter-spacing: -.03em; }
+.qchat-message p { max-width: 67ch; margin: 0; color: #474843; font-size: clamp(.76rem, .88vw, .88rem); line-height: 1.55; }
+.qchat-assistant.is-final .qchat-message-body { padding: 1.2rem 1.3rem; background: white; border: 1px solid #ffc4b0; border-left: .3rem solid var(--qchat-orange); border-radius: 0 1rem 1rem 0; box-shadow: 0 .75rem 2.2rem rgba(25, 25, 25, .07); }
+.qchat-assistant.is-final h2 { color: var(--qchat-orange); font-size: clamp(1.08rem, 1.5vw, 1.4rem); }
+
+.qchat-thinking > div { display: flex; align-items: center; gap: .8rem; min-height: 2rem; }
+.qchat-thinking strong { color: #575853; font-size: .8rem; font-weight: 550; }
+.qchat-thinking div > span { display: flex; gap: .22rem; }
+.qchat-thinking i { width: .32rem; height: .32rem; background: var(--qchat-orange); border-radius: 50%; animation: qchatThinking .9s infinite ease-in-out; }
+.qchat-thinking i:nth-child(2) { animation-delay: .14s; }
+.qchat-thinking i:nth-child(3) { animation-delay: .28s; }
+.qchat-error { display: grid; gap: .35rem; margin-left: 2.9rem; padding: 1rem; color: #8f2f20; background: #fff0eb; border-radius: .8rem; }
+.qchat-error span { font-size: .8rem; }
+
+.qchat-composer-wrap { width: calc(100% - 1.5rem); justify-self: center; display: grid; gap: .45rem; padding: 0 0 .7rem; }
+.qchat-composer {
+  min-height: 5.15rem;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: .8rem .9rem .65rem;
+  background: rgba(255, 255, 255, .94);
+  border: 1px solid rgba(37, 37, 37, .14);
+  border-radius: 1.3rem;
+  box-shadow: 0 .7rem 2.4rem rgba(25, 25, 25, .14);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.qchat-composer-input { padding: .15rem .25rem .7rem; color: #8a8a86; font-size: .86rem; }
+.qchat-composer-tools { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .65rem; }
+.qchat-composer-tools > button { width: 2rem; height: 2rem; display: grid; place-items: center; padding: 0; border: 1px solid var(--qchat-line); border-radius: 50%; background: white; cursor: pointer; }
+.qchat-model { justify-self: start; display: flex; align-items: center; gap: .5rem; padding: .25rem .55rem .25rem .3rem; background: #f0efeb; border-radius: 999px; }
+.qchat-model .qchat-brand-mark { width: 1.55rem; height: 1.55rem; padding: .2rem; }
+.qchat-model > span { display: grid; }
+.qchat-model strong { font-size: .66rem; }
+.qchat-model small { color: var(--qchat-gray); font: .44rem/1.2 var(--qchat-mono); text-transform: uppercase; }
+.qchat-model > i { width: .4rem; height: .4rem; border-right: 1px solid #676863; border-bottom: 1px solid #676863; transform: rotate(45deg) translateY(-.12rem); }
+.qchat-composer-tools > .qchat-send { color: white; background: var(--qchat-charcoal); border-color: var(--qchat-charcoal); font-size: 1rem; }
+.qchat-legal { padding: .2rem 1rem .55rem; color: #777873; font: 450 .43rem/1.3 var(--qchat-mono); text-align: center; }
+
+@keyframes qchatScanReveal {
+  0% { clip-path: circle(0 at 84% 62%); }
+  70% { clip-path: circle(150vmax at 84% 62%); }
+  100% { clip-path: circle(240vmax at 84% 62%); }
+}
+@keyframes qchatPageChange { from { opacity: .5; transform: translateY(.5rem) scale(.99); } }
+@keyframes qchatScanBeam { from { left: 2%; } to { left: calc(98% - .45rem); } }
+@keyframes qchatScanChromeOut { to { opacity: 0; transform: scale(.98); } }
+@keyframes qchatDocumentDock {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  65% { opacity: .92; transform: translate(16vw, -20vh) scale(.34); }
+  100% { opacity: 0; transform: translate(22vw, -29vh) scale(.16); }
+}
+@keyframes qchatScanCollapse {
+  0%, 42% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+@keyframes qchatChatArrive { from { opacity: 0; transform: scale(1.018); filter: blur(.35rem); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes qchatMessageIn { from { opacity: 0; transform: translateY(.8rem); } }
+@keyframes qchatThinking { 0%, 70%, 100% { opacity: .25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-.18rem); } }
+
+@media (max-width: 800px) {
+  .qchat-scan-stage { grid-template-columns: minmax(0, 1fr); }
+  .qchat-scan-status { display: none; }
+  .qchat-topbar { grid-template-columns: 1fr auto; }
+  .qchat-thread-title { display: none; }
+  .qchat-chat { height: auto; overflow: auto; }
+  .qchat-lanes { grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  .qchat-lane { height: min(78vh, 48rem); }
+}
+
+@media (max-width: 560px) {
+  .qchat-scan-header { gap: 1rem; }
+  .qchat-scan-meter { min-width: 7rem; }
+  .qchat-scan-stage { grid-template-columns: 1fr; align-content: center; }
+  .qchat-scan-document { min-width: 0; }
+  .qchat-thread-inner { width: 90%; }
+  .qchat-user { width: 92%; }
+  .qchat-assistant { grid-template-columns: 1.7rem minmax(0, 1fr); gap: .7rem; }
+  .qchat-assistant > .qchat-brand-mark { width: 1.7rem; height: 1.7rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

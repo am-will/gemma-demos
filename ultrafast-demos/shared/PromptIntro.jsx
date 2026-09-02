@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import addIcon from "./prompt-assets/add.svg";
-import microphoneIcon from "./prompt-assets/microphone.png";
 import sendIcon from "./prompt-assets/send.png";
 import "./prompt-intro.css";
 
@@ -25,7 +24,7 @@ export function PromptIntro({ prompt, attachments = [], onSend, onComplete, typi
     const aimingAt = duration + (reduceMotion ? 0 : 220);
     const pressingAt = aimingAt + (reduceMotion ? 20 : 760);
     const sentAt = pressingAt + (reduceMotion ? 20 : 200);
-    const completeAt = sentAt + (reduceMotion ? 30 : 760);
+    const completeAt = sentAt + (reduceMotion ? 30 : 650);
     let completed = false;
     let sent = false;
 
@@ -76,7 +75,12 @@ export function PromptIntro({ prompt, attachments = [], onSend, onComplete, typi
 
         <img className="prompt-intro__add" src={addIcon} alt="" aria-hidden="true" />
         <div className="prompt-intro__actions">
-          <img className="prompt-intro__microphone" src={microphoneIcon} alt="" aria-hidden="true" />
+          <span className="prompt-intro__microphone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M6.75 11.25a5.25 5.25 0 0 0 10.5 0M12 16.5V21M9 21h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </span>
           <button type="button" className="prompt-intro__send" aria-label="Send prompt">
             <img src={sendIcon} alt="" aria-hidden="true" />
           </button>

@@ -12,6 +12,7 @@
     "qwen-sec-visual-review",
     "qwen-sec-deal-review",
     "qwen-sec-deal-compare",
+    "qwen-sec-chat-review",
     "qwen-live-earnings-review",
     "qwen-live-earnings-compare"
   ],
@@ -26,6 +27,7 @@
     "dev:qwen-sec": "npm run dev --workspace qwen-sec-visual-review",
     "dev:qwen-deal": "npm run dev --workspace qwen-sec-deal-review",
     "dev:qwen-deal-compare": "npm run dev --workspace qwen-sec-deal-compare",
+    "dev:qwen-sec-chat": "npm run dev --workspace qwen-sec-chat-review",
     "dev:qwen-earnings": "npm run dev --workspace qwen-live-earnings-review",
     "dev:qwen-earnings-compare": "npm run dev --workspace qwen-live-earnings-compare"
   },

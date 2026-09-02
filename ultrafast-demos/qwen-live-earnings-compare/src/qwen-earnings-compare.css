@@ -39,7 +39,7 @@ button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
 }
 .qd8-scene-enter {
   z-index: 11;
-  animation: qd8SceneIrisReveal .76s cubic-bezier(.65, 0, .35, 1) both;
+  animation: qd8SceneIrisReveal .64s linear both;
 }
 .qd8-scene-enter .qd8-titlebar { animation: qd8TitleEnter .48s .08s cubic-bezier(.22, .8, .22, 1) both; }
 .qd8-scene-enter .qd8-lane.orange { animation: qd8LaneEnterLeft .64s .12s cubic-bezier(.22, .8, .22, 1) both; }
@@ -215,7 +215,8 @@ button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
 @keyframes qd8Reveal { from { opacity: 0; transform: translateY(.3rem); } }
 @keyframes qd8SceneIrisReveal {
   from { clip-path: circle(0 at 84% 62%); }
-  to { clip-path: circle(150vmax at 84% 62%); }
+  70% { clip-path: circle(150vmax at 84% 62%); }
+  to { clip-path: circle(240vmax at 84% 62%); }
 }
 @keyframes qd8DotBloom {
   from { opacity: 0; transform: scale(.86); }
