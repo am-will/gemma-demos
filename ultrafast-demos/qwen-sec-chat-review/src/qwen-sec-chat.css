@@ -32,6 +32,7 @@ button { font: inherit; }
   box-shadow: 0 .2rem .6rem rgba(25, 25, 25, .1);
 }
 .qchat-brand-mark img { width: 100%; height: 100%; object-fit: contain; }
+.qchat-brand-mark.qwen { padding: .18rem; }
 
 /* Document scene */
 .qchat-scan {
@@ -104,16 +105,6 @@ button { font: inherit; }
 .qchat-scan-document img { width: 100%; height: 100%; object-fit: contain; }
 .qchat-scan-document.is-rapid { animation: qchatRapidDocument .12s steps(2, end) both; }
 .qchat-scan-document.is-rapid img { animation: qchatRapidContent .12s steps(2, end) both; }
-.qchat-scan-beam {
-  position: absolute;
-  z-index: 2;
-  inset: 0 auto 0 0;
-  width: .45rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffb092 18%, var(--qchat-orange) 50%, #ffb092 82%, rgba(255, 255, 255, 0));
-  box-shadow: 0 0 1.3rem .28rem rgba(241, 90, 41, .48);
-  animation: qchatScanBeam .55s ease-in-out both;
-}
-
 .qchat-scan-status { align-self: center; max-width: 18rem; display: grid; gap: .55rem; }
 .qchat-scan-status span { color: #ff9c7b; }
 .qchat-scan-status strong { font: 550 clamp(1.05rem, 1.8vw, 1.7rem)/1.15 var(--qchat-sans); letter-spacing: -.035em; }
@@ -177,6 +168,7 @@ button { font: inherit; }
 }
 
 .qchat-lane {
+  position: relative;
   min-width: 0;
   min-height: 0;
   display: grid;
@@ -191,6 +183,8 @@ button { font: inherit; }
 .qchat-lane.neutral { border-top: .22rem solid #8a8a86; }
 
 .qchat-lane-header {
+  position: relative;
+  z-index: 2;
   min-height: 4.15rem;
   display: flex;
   align-items: center;
@@ -206,11 +200,34 @@ button { font: inherit; }
 .qchat-lane.orange .qchat-lane-header strong { color: var(--qchat-orange); }
 .qchat-lane-clock { flex: 0 0 auto; padding: .5rem .68rem; color: white; background: var(--qchat-charcoal); border-radius: 999px; font: 550 .68rem/1 var(--qchat-mono); font-variant-numeric: tabular-nums; }
 .qchat-lane.orange .qchat-lane-clock { background: var(--qchat-orange); }
-.qchat-lane-header > .qchat-lane-finish { display: flex; align-items: baseline; justify-content: end; gap: .58rem; }
+.qchat-lane-header > .qchat-lane-finish { display: flex; align-items: baseline; justify-content: end; gap: .58rem; transform-origin: right center; }
+.qchat-lane-header > .qchat-lane-finish.is-pulsing { animation: qchatDonePulse 1.15s ease-in-out infinite; will-change: transform, opacity; }
 .qchat-lane-header .qchat-lane-finish > strong { color: var(--qchat-charcoal); font: 750 clamp(1.15rem, 1.8vw, 1.65rem)/1 var(--qchat-sans); letter-spacing: -.055em; }
-.qchat-lane-finish > b { color: var(--qchat-gray); font: 550 .62rem/1 var(--qchat-mono); font-variant-numeric: tabular-nums; }
+.qchat-lane-finish > b { color: var(--qchat-gray); font: 650 clamp(1.15rem, 1.8vw, 1.65rem)/1 var(--qchat-mono); font-variant-numeric: tabular-nums; letter-spacing: -.055em; transition: opacity .22s ease; }
 .qchat-lane.orange .qchat-lane-header .qchat-lane-finish > strong,
 .qchat-lane.orange .qchat-lane-finish > b { color: var(--qchat-orange); }
+.qchat-lane.is-lifting [data-timer] { opacity: 0; }
+
+.qchat-lane.is-celebrating { animation: qchatCardPop 1s cubic-bezier(.22, 1.2, .4, 1) both; }
+.qchat-celebration { position: absolute; z-index: 7; inset: 0; pointer-events: none; }
+.qchat-confetti-burst { position: absolute; width: 0; height: 0; }
+.qchat-confetti-piece {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--size);
+  height: var(--size);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(.3);
+  will-change: transform, opacity;
+  animation: qchatConfettiFly var(--duration) var(--delay) forwards;
+}
+.qchat-confetti-shape { display: block; background: var(--color); box-shadow: 0 .05rem .3rem rgba(20, 12, 6, .2); animation: qchatConfettiFlutter var(--flutter) linear infinite; }
+.qchat-confetti-shape.rect { width: 68%; height: 100%; border-radius: .05rem; }
+.qchat-confetti-shape.circle { width: 88%; height: 88%; border-radius: 50%; }
+.qchat-confetti-shape.ribbon { width: 36%; height: 128%; border-radius: 999px; }
 
 .qchat-thread { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #c3c1ba transparent; }
 .qchat-thread-inner { width: min(92%, 34rem); min-height: 100%; display: grid; align-content: start; gap: 1.55rem; margin: 0 auto; padding: clamp(1.4rem, 3.5vh, 2.6rem) 0 2.25rem; }
@@ -268,13 +285,52 @@ button { font: inherit; }
 .qchat-composer-tools > .qchat-send { color: white; background: var(--qchat-charcoal); border-color: var(--qchat-charcoal); font-size: 1rem; }
 .qchat-legal { padding: .2rem 1rem .55rem; color: #777873; font: 450 .43rem/1.3 var(--qchat-mono); text-align: center; }
 
+/* Final timer comparison */
+.qchat-timer-showcase { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; padding: clamp(1.5rem, 5vw, 5rem); }
+.qchat-timer-showcase::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(125% 125% at 50% 38%, rgba(48, 39, 34, .55), rgba(16, 13, 12, .88));
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  backdrop-filter: blur(14px) saturate(1.05);
+  animation: qchatShowcaseFade .52s ease both;
+}
+.qchat-timer-showcase-inner { position: relative; z-index: 1; width: 100%; display: grid; justify-items: center; gap: clamp(1.15rem, 2.6vw, 2.25rem); }
+.qchat-showcase-eyebrow { color: rgba(255, 255, 255, .62); font: 600 clamp(.72rem, 1.25vw, 1.05rem)/1 var(--qchat-mono); letter-spacing: .34em; text-transform: uppercase; animation: qchatShowcaseRise .55s .2s both; }
+.qchat-showcase-pillrow { width: 100%; display: flex; flex-wrap: wrap; align-items: start; justify-content: center; gap: clamp(1.4rem, 4.5vw, 4.5rem); }
+.qchat-showcase-slot { display: grid; justify-items: center; gap: clamp(.65rem, 1.3vw, 1.1rem); }
+.qchat-showcase-slot > span { color: #ededeb; font: 750 clamp(1.15rem, 2vw, 1.8rem)/1 var(--qchat-sans); letter-spacing: -.035em; animation: qchatShowcaseRise .52s .86s both; }
+.qchat-showcase-slot.cerebras > span { color: #ffd9c9; }
+.qchat-showcase-slot > b {
+  min-width: clamp(12rem, 24vw, 22rem);
+  display: grid;
+  place-items: center;
+  padding: clamp(1.1rem, 2.2vw, 1.9rem) clamp(1.35rem, 3vw, 2.8rem);
+  color: white;
+  background: #858581;
+  border-radius: clamp(1rem, 1.8vw, 1.6rem);
+  box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, .45);
+  font: 700 clamp(2.6rem, 5.8vw, 5.5rem)/1 var(--qchat-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.07em;
+  white-space: nowrap;
+  will-change: transform;
+}
+.qchat-showcase-slot.cerebras > b { color: var(--qchat-orange); background: white; }
+.qchat-showcase-slot.is-faster > b { animation: qchatWinnerGlow .72s .98s both; }
+.qchat-showcase-slot.openrouter.is-faster > b { animation-name: qchatNeutralWinnerGlow; }
+.qchat-showcase-verdict { display: inline-flex; align-items: baseline; gap: .55rem; padding: .7rem 1.55rem; color: white; background: #777773; border-radius: 999px; box-shadow: 0 .7rem 2.4rem rgba(0, 0, 0, .4); animation: qchatShowcasePop .64s cubic-bezier(.34, 1.56, .64, 1) 1.14s both; }
+.qchat-showcase-verdict.cerebras { background: linear-gradient(135deg, var(--qchat-orange), #ff8a5c); box-shadow: 0 .7rem 2.5rem rgba(241, 90, 41, .48); }
+.qchat-showcase-verdict strong { font: 800 clamp(1.65rem, 3.4vw, 3rem)/1 var(--qchat-sans); letter-spacing: -.055em; }
+.qchat-showcase-verdict span { font: 700 clamp(.95rem, 1.7vw, 1.45rem)/1 var(--qchat-sans); }
+
 @keyframes qchatScanReveal {
   0% { clip-path: circle(0 at 84% 62%); }
   70% { clip-path: circle(150vmax at 84% 62%); }
   100% { clip-path: circle(240vmax at 84% 62%); }
 }
 @keyframes qchatPageChange { from { opacity: .5; transform: translateY(.5rem) scale(.99); } }
-@keyframes qchatScanBeam { from { left: 2%; } to { left: calc(98% - .45rem); } }
 @keyframes qchatRapidDocument { from { transform: translateY(.14rem) scale(.995); } }
 @keyframes qchatRapidContent { from { opacity: .58; filter: blur(.16rem); } }
 @keyframes qchatPageFly { from { transform: translateX(0) skewX(-4deg); } to { transform: translateX(-120%) skewX(-4deg); } }
@@ -291,6 +347,26 @@ button { font: inherit; }
 @keyframes qchatChatArrive { from { opacity: 0; transform: scale(1.018); filter: blur(.35rem); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes qchatMessageIn { from { opacity: 0; transform: translateY(.8rem); } }
 @keyframes qchatThinking { 0%, 70%, 100% { opacity: .25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-.18rem); } }
+@keyframes qchatDonePulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .72; transform: scale(1.07); } }
+@keyframes qchatCardPop { 0% { transform: scale(1); } 38% { transform: scale(1.012); } 70% { transform: scale(1.006); } 100% { transform: scale(1); } }
+@keyframes qchatConfettiFly {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(.3) rotate(0); animation-timing-function: cubic-bezier(.12, .78, .32, 1); }
+  9%, 34% { opacity: 1; }
+  34% { transform: translate3d(var(--bx), var(--by), 0) scale(1) rotate(calc(var(--spin) * .4)); animation-timing-function: cubic-bezier(.4, 0, .72, 1); }
+  100% { opacity: 0; transform: translate3d(var(--fx), var(--fy), 0) scale(.92) rotate(var(--spin)); }
+}
+@keyframes qchatConfettiFlutter { to { transform: rotateX(360deg) rotateY(540deg); } }
+@keyframes qchatShowcaseFade { from { opacity: 0; } }
+@keyframes qchatShowcaseRise { from { opacity: 0; transform: translateY(.8rem); } }
+@keyframes qchatShowcasePop { from { opacity: 0; transform: scale(.8); } }
+@keyframes qchatWinnerGlow {
+  from { box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, .45); }
+  to { box-shadow: 0 0 0 .35rem rgba(241, 90, 41, .58), 0 0 3.5rem rgba(241, 90, 41, .55), 0 1.6rem 4rem rgba(0, 0, 0, .45); }
+}
+@keyframes qchatNeutralWinnerGlow {
+  from { box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, .45); }
+  to { box-shadow: 0 0 0 .35rem rgba(255, 255, 255, .42), 0 0 3.2rem rgba(255, 255, 255, .3), 0 1.6rem 4rem rgba(0, 0, 0, .45); }
+}
 
 @media (max-width: 800px) {
   .qchat-scan-stage { grid-template-columns: minmax(0, 1fr); }
@@ -315,4 +391,5 @@ button { font: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .qchat-celebration { display: none; }
 }
