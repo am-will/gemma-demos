@@ -29,6 +29,7 @@ const RESEARCH_SOURCES = {
     url: "https://investors.staar.com/news-and-events/press-releases/2025/08-04-2025"
   }
 };
+const researchSourceCache = new Map();
 
 const OUTPUT_ANONYMITY_RULES = [
   "Reader-facing output must be anonymous.",
@@ -45,7 +46,10 @@ const OUTPUT_NAME_REPLACEMENTS = [
   [/\bSTAAR\b/gi, "the issuer"],
   [/\bAlcon(?: Inc\.?| AG)?\b/gi, "the buyer"],
   [/\bBroadwood Partners\b/gi, "the opposing stockholder"],
-  [/\bBroadwood\b/gi, "the opposing stockholder"]
+  [/\bBroadwood\b/gi, "the opposing stockholder"],
+  [/\bsupports_offer\b/gi, "The evidence supports the offer"],
+  [/\bopposes_offer\b/gi, "The evidence weighs against the offer"],
+  [/\binsufficient_evidence\b/gi, "The evidence is insufficient to reach a firm conclusion"]
 ];
 
 function anonymizeOutputText(value) {
@@ -56,7 +60,10 @@ function anonymizeOutputText(value) {
 }
 
 function anonymizeOutputValue(value, key = "") {
-  if (typeof value === "string") return /url/i.test(key) ? value : anonymizeOutputText(value);
+  if (typeof value === "string") {
+    if (/url/i.test(key) || key === "deal_view" || key === "decision") return value;
+    return anonymizeOutputText(value);
+  }
   if (Array.isArray(value)) return value.map((item) => anonymizeOutputValue(item, key));
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value).map(([childKey, childValue]) => [childKey, anonymizeOutputValue(childValue, childKey)]));
@@ -311,14 +318,39 @@ function sourceSnippets(text, terms, radius = 4200) {
   return snippets.join("\n\n").slice(0, 70000);
 }
 
+async function fetchExternal(url, label, responseType = "text") {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "gemma-demos/1.0 demo@example.com" },
+        signal: AbortSignal.timeout(30000)
+      });
+      if (response.ok) return responseType === "bytes" ? Buffer.from(await response.arrayBuffer()) : await response.text();
+      if (response.status !== 408 && response.status !== 429 && response.status < 500) {
+        throw new Error(`${label} returned HTTP ${response.status}.`);
+      }
+      await response.body?.cancel();
+      lastError = new Error(`${label} returned HTTP ${response.status}.`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
+  throw new Error(`${label} is temporarily unavailable.`, { cause: lastError });
+}
+
 async function fetchResearchSource(source) {
-  const response = await fetch(source.url, {
-    headers: { "User-Agent": "gemma-demos/1.0 demo@example.com" },
-    signal: AbortSignal.timeout(30000)
-  });
-  if (!response.ok) throw new Error(`Could not fetch ${source.label} (HTTP ${response.status}).`);
-  const html = await response.text();
-  return { ...source, text: htmlToText(html), bytes: Buffer.byteLength(html) };
+  if (!researchSourceCache.has(source.url)) {
+    const request = fetchExternal(source.url, source.label).then((html) => ({
+      ...source,
+      text: htmlToText(html),
+      bytes: Buffer.byteLength(html)
+    }));
+    researchSourceCache.set(source.url, request);
+    void request.catch(() => researchSourceCache.delete(source.url));
+  }
+  return researchSourceCache.get(source.url);
 }
 
 function usageTotal(current, usage) {
@@ -357,12 +389,7 @@ async function readJsonBody(request) {
 }
 
 async function fetchExamplePdf() {
-  const response = await fetch(SOURCE_URL, {
-    headers: { "User-Agent": "gemma-demos/1.0 demo@example.com" },
-    signal: AbortSignal.timeout(30000)
-  });
-  if (!response.ok) throw new Error(`Could not download the SEC exhibit (HTTP ${response.status}).`);
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const bytes = await fetchExternal(SOURCE_URL, "The SEC exhibit", "bytes");
   if (!bytes.subarray(0, 5).equals(Buffer.from("%PDF-"))) throw new Error("The SEC source did not return a PDF.");
   if (bytes.length > MAX_PDF_BYTES) throw new Error("The SEC exhibit is larger than 20 MB.");
   return bytes;
@@ -468,7 +495,7 @@ function evidenceRules() {
   ].join("\n");
 }
 
-async function executeReview({ response, config, prepared, challenge }) {
+async function executeReview({ response, config, prepared, challenge, skipInitialAssessment = false }) {
   const totalStartedAt = performance.now();
   let totalUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
   let visualInputs = 0;
@@ -721,7 +748,7 @@ async function executeReview({ response, config, prepared, challenge }) {
   modelCalls += 1;
   totalUsage = usageTotal(totalUsage, companyResearch.usage);
 
-  const assessment = await runStage({
+  const assessment = skipInitialAssessment ? null : await runStage({
     response,
     config,
     id: "assessment",
@@ -745,8 +772,10 @@ async function executeReview({ response, config, prepared, challenge }) {
       evidenceRules()
     ].join("\n\n")
   });
-  modelCalls += 1;
-  totalUsage = usageTotal(totalUsage, assessment.usage);
+  if (assessment) {
+    modelCalls += 1;
+    totalUsage = usageTotal(totalUsage, assessment.usage);
+  }
 
   const revision = await runStage({
     response,
@@ -757,14 +786,21 @@ async function executeReview({ response, config, prepared, challenge }) {
     schema: REVISION_SCHEMA,
     maxOutputTokens: 1300,
     prompt: [
-      "Re-evaluate the deal assessment after an analyst challenge.",
+      skipInitialAssessment
+        ? "Act as a skeptical but balanced transaction analyst. Form a final conclusion about the $28 offer from the evidence below, as of October 2, 2025. Weigh both the opposing stockholder's advocacy and the company materials, including their limitations and strongest counterarguments."
+        : "Re-evaluate the deal assessment after an analyst challenge.",
       `Challenge: ${challenge}`,
-      "Answer the challenge directly. Revise the conclusion only where the cited evidence requires it. Explain what changed and what did not.",
+      skipInitialAssessment
+        ? "Answer the challenge directly based on the cited evidence. No prior assessment was produced; do not imply that you are revising an earlier conclusion."
+        : "Answer the challenge directly. Revise the conclusion only where the cited evidence requires it. Explain what changed and what did not.",
       "The answer and revised_conclusion must each be one concise paragraph of no more than three sentences. Lead with the direct answer and include only the most decision-relevant support.",
       "The decision field refers to the $28 offer itself and must logically match the answer and revised conclusion: supports_offer, opposes_offer, or insufficient_evidence. If the answer says fairness is not established, do not select supports_offer.",
       "Write every reader-facing field in normal human language. Never expose JSON field names, snake_case labels, or enum tokens in the answer, revised conclusion, what changed, or what did not change.",
       "The proxy research identifies a general rationale for the revised projections: further risk-adjusted expectations and emerging competition in China. Do not claim there was no explanation at all. You may say the explanation lacks granular support if the evidence warrants it. Do not allege manipulation without evidence.",
-      `Initial deal assessment:\n${JSON.stringify(assessment.result)}`,
+      ...(assessment ? [`Initial deal assessment:\n${JSON.stringify(assessment.result)}`] : [
+        `Document triage:\n${JSON.stringify(triage.result)}`,
+        `Sale-process review:\n${JSON.stringify(process.result)}`
+      ]),
       `Projection comparison:\n${JSON.stringify(projections.result)}`,
       `DCF review:\n${JSON.stringify(dcf.result)}`,
       `Discount-rate review:\n${JSON.stringify(discount.result)}`,
@@ -785,7 +821,7 @@ async function executeReview({ response, config, prepared, challenge }) {
     researchSources: [proxySource, companySource, announcementSource].map(({ label, url }) => ({ label, url })),
     usage: totalUsage,
     challenge: anonymizeOutputText(challenge),
-    initialAssessment: assessment.result,
+    initialAssessment: assessment?.result ?? null,
     revisedAssessment: revision.result
   });
 }
@@ -849,6 +885,7 @@ function installMiddleware(server, config, getExampleBytes, pageCache) {
         response,
         config: provider,
         prepared,
+        skipInitialAssessment: body.skipInitialAssessment === true,
         challenge: String(body.challenge || ANALYST_CHALLENGE).trim().slice(0, 500) || ANALYST_CHALLENGE
       });
     } catch (error) {
@@ -863,21 +900,33 @@ function installMiddleware(server, config, getExampleBytes, pageCache) {
 export function createQwenDealReviewPlugin({ providers, baseUrl, apiKey, model, examplePdfPath }) {
   const config = normalizeProviderConfig({ providers, baseUrl, apiKey, model });
   const pageCache = new Map();
-  let exampleBytes;
+  let exampleBytesPromise;
 
   async function getExampleBytes() {
-    if (exampleBytes) return exampleBytes;
-    if (examplePdfPath) {
-      try {
-        await access(examplePdfPath);
-        exampleBytes = await readFile(examplePdfPath);
-        return exampleBytes;
-      } catch {
-        // Fall through to the official SEC source.
-      }
+    if (!exampleBytesPromise) {
+      exampleBytesPromise = (async () => {
+        if (examplePdfPath) {
+          try {
+            await access(examplePdfPath);
+            return await readFile(examplePdfPath);
+          } catch {
+            // Fall through to the official SEC source.
+          }
+        }
+        return fetchExamplePdf();
+      })();
+      void exampleBytesPromise.catch(() => {
+        exampleBytesPromise = undefined;
+      });
     }
-    exampleBytes = await fetchExamplePdf();
-    return exampleBytes;
+    try {
+      return await exampleBytesPromise;
+    } catch (error) {
+      if (exampleBytesPromise) {
+        exampleBytesPromise = undefined;
+      }
+      throw error;
+    }
   }
 
   function setup(server) {

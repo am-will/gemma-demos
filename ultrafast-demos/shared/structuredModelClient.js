@@ -52,6 +52,43 @@ function normalizeUsage(usage) {
   };
 }
 
+function retryDelayMs(response, attempt) {
+  const retryAfter = Number(response?.headers?.get("retry-after"));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) return Math.min(retryAfter * 1000, 5000);
+  return 500 * (attempt + 1);
+}
+
+function isTransientStatus(status) {
+  return status === 408 || status === 409 || status === 429 || status >= 500;
+}
+
+async function fetchProvider(provider, url, init) {
+  const maxRetries = Math.max(0, provider.maxRetries || 0);
+  const timeoutMs = provider.timeoutMs || 180000;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      if (!isTransientStatus(response.status) || attempt === maxRetries) return response;
+      console.warn(`[model-provider] ${provider.label} returned HTTP ${response.status}; retry ${attempt + 1}/${maxRetries}`);
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response, attempt)));
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error(`[model-provider] ${provider.label} failed after ${attempt + 1} attempts`, error);
+        throw new Error(`${provider.label} is temporarily unavailable. Please run the review again.`, { cause: error });
+      }
+      console.warn(`[model-provider] ${provider.label} request failed; retry ${attempt + 1}/${maxRetries}`, error);
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+
+  throw new Error(`${provider.label} request failed after retries.`);
+}
+
 export function normalizeProviderConfig({ providers, baseUrl, apiKey, model }) {
   const entries = providers && Object.keys(providers).length
     ? Object.entries(providers)
@@ -93,13 +130,12 @@ export async function callStructuredModel({ provider, schema, schemaName, input,
   const baseUrl = provider.baseUrl.replace(/\/$/, "");
   const common = {
     method: "POST",
-    headers: providerHeaders(provider),
-    signal: AbortSignal.timeout(provider.timeoutMs || 180000)
+    headers: providerHeaders(provider)
   };
 
-  let response;
+  let requestProvider;
   if (provider.protocol === "responses") {
-    response = await fetch(`${baseUrl}/responses`, {
+    requestProvider = () => fetchProvider(provider, `${baseUrl}/responses`, {
       ...common,
       body: JSON.stringify({
         model: provider.model,
@@ -113,7 +149,7 @@ export async function callStructuredModel({ provider, schema, schemaName, input,
   } else {
     const completionMultiplier = provider.completionMultiplier || 3;
     const tokenBudget = Math.max(maxOutputTokens * completionMultiplier, 1200);
-    response = await fetch(`${baseUrl}/chat/completions`, {
+    requestProvider = () => fetchProvider(provider, `${baseUrl}/chat/completions`, {
       ...common,
       body: JSON.stringify({
         model: provider.model,
@@ -129,11 +165,22 @@ export async function callStructuredModel({ provider, schema, schemaName, input,
     });
   }
 
+  let response = await requestProvider();
   let payload;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error(`${provider.label} returned a non-JSON response (HTTP ${response.status}).`);
+  const malformedRetries = Math.min(2, Math.max(0, provider.maxRetries || 0));
+  for (let attempt = 0; attempt <= malformedRetries; attempt += 1) {
+    const rawBody = await response.text();
+    try {
+      payload = JSON.parse(rawBody);
+      break;
+    } catch {
+      if (attempt < malformedRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        response = await requestProvider();
+        continue;
+      }
+      throw new Error(`${provider.label} is temporarily unavailable. Please run the review again.`);
+    }
   }
   if (!response.ok) {
     const detail = payload.error?.message || payload.message || (typeof payload.error === "string" ? payload.error : "");
