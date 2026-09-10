@@ -73,6 +73,8 @@ button, a { font: inherit; }
 .intro-copy {
   position: relative;
   z-index: 4;
+  display: grid;
+  align-content: center;
   width: 100%;
   max-width: none;
   min-height: 3.5em;
@@ -200,10 +202,10 @@ button, a { font: inherit; }
 
 /* Concept 02: a compact page fan opens within the attachment slot, then closes. */
 .concept-fan .intro-files figure { transform-origin: 12% 88%; transform: translate(1.8rem, .65rem) rotate(0) scale(.86); }
-.concept-fan.phase-attaching .intro-files figure { animation: fanPage .82s cubic-bezier(.22, .8, .22, 1) both; animation-delay: calc(var(--page-index) * .08s); }
+.concept-fan.phase-attaching .intro-files figure { animation: fanPage 1.025s cubic-bezier(.22, .8, .22, 1) both; animation-delay: calc(var(--page-index) * .1s); }
 .concept-fan.phase-ready .intro-files figure,
 .concept-fan.phase-aiming .intro-files figure,
-.concept-fan.phase-pressing .intro-files figure { opacity: 1; transform: translate(var(--offset), calc(var(--offset) * .7)) scale(.92); transition: .45s ease; }
+.concept-fan.phase-pressing .intro-files figure { opacity: 1; transform: translate(var(--offset), calc(var(--offset) * .7)) scale(.92); transition: .5625s ease; }
 
 /* Concept 04: the cursor carries the filing into the fixed attachment slot. */
 .concept-tray { --tray-start-x: 4.5rem; --tray-start-y: -2.6rem; }

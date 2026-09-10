@@ -110,7 +110,7 @@ export function BrandEndingDemo({ variant = "1" }) {
   );
 }
 
-export function LiveBrandEndingDemo({ PromptScene, variant = "2" }) {
+export function LiveBrandEndingDemo({ PromptScene, prompt, variant = "2" }) {
   const [endingSequence, setEndingSequence] = useState(0);
   const endingTimerRef = useRef(0);
 
@@ -129,6 +129,7 @@ export function LiveBrandEndingDemo({ PromptScene, variant = "2" }) {
       <QwenSecChatReview
         skipDocumentScene
         PromptScene={PromptScene}
+        prompt={prompt}
         onReviewComplete={handleReviewComplete}
       />
       {endingSequence > 0 && <BrandEndingOverlay variant={variant} sequenceKey={endingSequence} />}

@@ -4,7 +4,8 @@ import "../../shared/circular-dot-field.css";
 import addIcon from "../../shared/prompt-assets/add.svg";
 import "./intro-concepts.css";
 
-const PROMPT = "Review this 81-page SEC filing. Is the $28 offer fair?";
+export const FINANCIAL_ANALYSIS_PROMPT = "Analyze the attached 81-page document and provide a concise financial analysis.";
+const PROMPT = FINANCIAL_ANALYSIS_PROMPT;
 const CONCEPTS = {
   dock: { number: "01", name: "Dock & snap", note: "Pages arrive from the edge and resolve into one attachment." },
   fan: { number: "02", name: "Fan & bind", note: "A brief page fan makes the PDF feel substantial, then closes." },
@@ -46,11 +47,16 @@ function useSequence(resetKey, prompt = PROMPT, onSend, onComplete) {
       callback?.();
     }, launchDelayMs + (reduced ? 100 : delay)));
     const promptHoldMs = 1200;
-    const aimingAt = (resetKey === "tray" ? 3750 : 3420) + promptHoldMs;
-    const pressingAt = (resetKey === "tray" ? 4350 : 4020) + promptHoldMs;
-    const sentAt = (resetKey === "tray" ? 4540 : 4210) + promptHoldMs;
-    schedule("attaching", 2050);
-    schedule("ready", 3000);
+    const isFan = resetKey === "fan" || resetKey === "fan-live";
+    const attachingAt = isFan ? 2250 : 2050;
+    // Fan: 1,025 ms animation plus two 100 ms page staggers.
+    const readyAt = isFan ? attachingAt + 1225 : 3000;
+    const attachmentShiftMs = readyAt - 3000;
+    const aimingAt = (resetKey === "tray" ? 3750 : 3420) + promptHoldMs + attachmentShiftMs;
+    const pressingAt = (resetKey === "tray" ? 4350 : 4020) + promptHoldMs + attachmentShiftMs;
+    const sentAt = (resetKey === "tray" ? 4540 : 4210) + promptHoldMs + attachmentShiftMs;
+    schedule("attaching", attachingAt);
+    schedule("ready", readyAt);
     schedule("aiming", aimingAt);
     schedule("pressing", pressingAt);
     schedule("sent", sentAt, () => onSendRef.current?.());
@@ -133,8 +139,10 @@ function PromptComposer({ phase, prompt, typed }) {
   return (
     <section className="intro-composer" aria-label="Prompt composer">
       <div className="intro-copy" aria-label={prompt}>
-        {prompt.slice(0, typed)}
-        {phase === "typing" && <i className="intro-caret" aria-hidden="true" />}
+        <span>
+          {prompt.slice(0, typed)}
+          {phase === "typing" && <i className="intro-caret" aria-hidden="true" />}
+        </span>
       </div>
       <FilePages />
       <div className="intro-bottom-bar">

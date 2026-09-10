@@ -5,7 +5,7 @@ import cerebrasLogo from "../../../car-damage/public/assets/cerebras-logo.png";
 import qwenLogo from "./assets/qwen-symbol-transparent.png";
 import "./qwen-sec-chat.css";
 
-const PROMPT = "Review this 81-page SEC filing. Is the $28 offer fair?";
+const PROMPT = "Analyze the attached 81-page document and provide a concise financial analysis.";
 const CHALLENGE = "Management says the revised projections are more reliable, and the $28 offer falls inside the revised DCF range. Does that make the transaction fair?";
 const ATTACHMENTS = [
   { src: "/api/example/page/1", alt: "Transaction filing cover" },
@@ -122,21 +122,25 @@ function messageCopy(stageId, result) {
 
 function formatClock(milliseconds) {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
-  return seconds < 60 ? `${seconds}S` : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function elapsedTenths(milliseconds) {
+  return Math.floor(Math.max(0, milliseconds || 0) / 100);
 }
 
 function formatRaceClock(milliseconds) {
-  const safeMs = Math.max(0, Math.round(milliseconds || 0));
-  const minutes = Math.floor(safeMs / 60000);
-  const seconds = Math.floor((safeMs % 60000) / 1000);
-  const tenths = Math.floor((safeMs % 1000) / 100);
-  return minutes === 0 ? `${seconds}.${tenths}S` : `${minutes}:${String(seconds).padStart(2, "0")}.${tenths}`;
+  const totalTenths = elapsedTenths(milliseconds);
+  const minutes = Math.floor(totalTenths / 600);
+  const seconds = Math.floor(totalTenths / 10) % 60;
+  const tenths = totalTenths % 10;
+  return minutes === 0 ? `${seconds}.${tenths}s` : `${minutes}:${String(seconds).padStart(2, "0")}.${tenths}`;
 }
 
 const pick = (items) => items[Math.floor(Math.random() * items.length)];
 
 function createConfettiPieces(baseDelay) {
-  return Array.from({ length: 15 }, (_, id) => {
+  return Array.from({ length: 10 }, (_, id) => {
     const angle = Math.random() * Math.PI * 2;
     const distance = 2.6 + Math.random() * 5.2;
     const burstX = Math.cos(angle) * distance;
@@ -309,13 +313,13 @@ function LaneCompletion({ laneId, milliseconds }) {
     <div className={`qchat-lane-completion ${laneId}`} role="status" aria-live="polite">
       <div className="qchat-lane-completion-card" ref={cardRef}>
         <strong>DONE</strong>
-        <b>{formatRaceClock(milliseconds)}</b>
+        <b>{(elapsedTenths(milliseconds) / 10).toFixed(1)} sec</b>
       </div>
     </div>
   );
 }
 
-function ChatLane({ laneId, lane }) {
+function ChatLane({ laneId, lane, prompt }) {
   const threadRef = useRef(null);
   const meta = LANE_META[laneId];
   const running = lane.status === "running";
@@ -350,7 +354,7 @@ function ChatLane({ laneId, lane }) {
       <section className="qchat-thread" ref={threadRef}>
         <div className="qchat-thread-inner">
           <article className="qchat-message qchat-user">
-            <div className="qchat-user-copy">{PROMPT}</div>
+            <div className="qchat-user-copy">{prompt}</div>
             <div className="qchat-attachment">
               <img src="/api/example/page/1" alt="Attached transaction filing" />
               <div><strong>Public transaction filing</strong><span>PDF · 81 pages</span></div>
@@ -377,12 +381,12 @@ function ChatLane({ laneId, lane }) {
   );
 }
 
-function ChatScreen({ lanes }) {
+function ChatScreen({ lanes, prompt }) {
   return (
     <main className="qchat-chat q-dot-field" aria-label="Qwen 3.8 27B side-by-side SEC filing review">
       <section className="qchat-lanes">
-        <ChatLane laneId="cerebras" lane={lanes.cerebras} />
-        <ChatLane laneId="openrouter" lane={lanes.openrouter} />
+        <ChatLane laneId="cerebras" lane={lanes.cerebras} prompt={prompt} />
+        <ChatLane laneId="openrouter" lane={lanes.openrouter} prompt={prompt} />
       </section>
       <footer className="qchat-legal">Uses publicly available financial documents. AI-generated analysis may be inaccurate and is not investment advice.</footer>
     </main>
@@ -392,6 +396,7 @@ function ChatScreen({ lanes }) {
 export function QwenSecChatReview({
   skipDocumentScene = false,
   PromptScene = PromptIntro,
+  prompt = PROMPT,
   completionDemo = false,
   completionDemoLoopMs = 5000,
   onReviewComplete
@@ -570,10 +575,10 @@ export function QwenSecChatReview({
   }
 
   return <div className="qchat-app">
-    {(showChat || scene === "chat") && <ChatScreen lanes={lanes} />}
+    {(showChat || scene === "chat") && <ChatScreen lanes={lanes} prompt={prompt} />}
     {scene === "scan" && <DocumentScan progress={scanProgress} exiting={scanExiting} />}
     {showIntro && <PromptScene
-      prompt={PROMPT}
+      prompt={prompt}
       attachments={ATTACHMENTS}
       theme="orange"
       onSend={() => {
