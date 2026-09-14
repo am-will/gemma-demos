@@ -1,0 +1,22 @@
+.money-intro { position: fixed; inset: 0; z-index: 50; }
+.money-intro-field { position: absolute; inset: 0; background: #f2f1ed; transition: opacity 1s ease; }
+.money-intro-composer { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(76vw,1100px); height: 245px; padding: 34px; border: 1px solid #f15a2947; border-radius: 26px; background: white; box-shadow: 0 8px 26px #f15a2921,0 5px 18px #00000015; font-family: Manrope,sans-serif; font-size: clamp(22px,2.5vw,36px); line-height: 1.45; }
+.money-intro-text { max-width: 100%; }
+.money-intro-caret { display:inline-block; width:2px; height:1em; margin-left:3px; background:#f15a29; vertical-align:-.1em; animation: moneyCaret .8s steps(2) infinite; }
+.money-intro-send { position:absolute; right:25px; bottom:22px; width:44px; height:44px; padding:0; min-width:0; min-height:0; display:grid; place-items:center; background:#f15a29; color:white; border:0; border-radius:12px; transition: transform .15s; }
+.money-intro-send svg { display:block; width:25px; height:25px; }
+.money-intro-pointer { position:absolute; width:26px; height:32px; right:36px; bottom:29px; opacity:0; transform:translate(120px,95px); filter:drop-shadow(0 2px 2px #0003); transform-origin:3px 2px; }
+.phase-aiming .money-intro-pointer { opacity:1; transform:translate(0,0); transition:transform .8s cubic-bezier(.25,.7,.25,1),opacity .1s; }
+.phase-pressing .money-intro-pointer { opacity:1; transform:translate(0,0) scale(.92); }
+.phase-pressing .money-intro-send { transform:scale(.9); background:#d94b20; }
+.phase-docking .money-intro-field, .is-docked .money-intro-field { opacity:0; }
+.phase-docking .money-intro-send, .is-docked .money-intro-send { width:33px; height:33px; right:15px; bottom:11px; transition:width 1.1s, height 1.1s, right 1.1s, bottom 1.1s, transform .15s, background .15s; }
+.money-intro-error { font-size:13px; color:#b1442c; }
+.money-app-intro .workspace { pointer-events:none; }
+.money-app-intro .composer { visibility:hidden; }
+@keyframes moneyCaret { 50% {opacity:0;} }
+@media(max-width:650px) { .money-intro-composer { width:90vw; height:250px; padding:24px; font-size:23px; } }
+@media(prefers-reduced-motion:reduce) { .money-intro *, .money-intro *::before { animation:none!important; transition:none!important; } }
+
+/* Align the SVG tip at (3, 2) with the 33px send button center. */
+.is-docked .money-intro-pointer { right:8.5px; bottom:-2.5px; }

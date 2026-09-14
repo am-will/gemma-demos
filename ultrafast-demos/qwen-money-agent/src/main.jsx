@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { agents } from "./agents";
 import "./style.css";
+import { PromptIntro, HOME_PROMPT } from "./PromptIntro";
+import { BrandEndingOverlay } from "./BrandEnding";
 const money = (n, digits = 0) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -244,6 +246,12 @@ function Evidence({ data }) {
   );
 }
 function App() {
+  const [intro, setIntro] = useState(!new URLSearchParams(location.search).has("assistant"));
+  const [ending, setEnding] = useState(new URLSearchParams(location.search).get("ending") === "2");
+  const composerRef = useRef(null);
+  const endingTimer = useRef(null);
+  const introRun = useRef(false);
+  useEffect(() => () => clearTimeout(endingTimer.current), []);
   const [overview, setOverview] = useState(null),
     [status, setStatus] = useState(null),
     [initError, setInitError] = useState("");
@@ -346,6 +354,10 @@ function App() {
         if (e.type === "done") {
           terminal = true;
           update((m) => ({ ...m, stats: e, status: "" }));
+          if (introRun.current) {
+            introRun.current = false;
+            endingTimer.current = setTimeout(() => setEnding(true), 3700);
+          }
         }
         if (e.type === "error") {
           terminal = true;
@@ -366,6 +378,8 @@ function App() {
           "Connection ended before the analysis finished. Please retry.",
         );
     } catch (error) {
+      introRun.current = false;
+      clearTimeout(endingTimer.current);
       update((m) => ({
         ...m,
         status: "",
@@ -400,8 +414,10 @@ function App() {
     "How can I pay off my debt faster?",
   ];
   return (
-    <div className="app">
-      <div className="workspace">
+    <div className={`app${intro ? " money-app-intro" : ""}`}>
+      {intro && !ending && <PromptIntro ready={!!overview && !!status?.configured} error={initError || (status && !status.configured ? "Configure the Cerebras API key, then reload to start." : "")} targetRef={composerRef} onDock={() => setInput(HOME_PROMPT)} onComplete={() => { setIntro(false); introRun.current = true; send(HOME_PROMPT, "home"); }} />}
+      {ending && <BrandEndingOverlay variant="2" sequenceKey={1} />}
+      <div className="workspace" inert={intro || ending ? true : undefined}>
         <aside className={`library ${mobileLibrary ? "mobile-open" : ""}`}>
           <div className="library-heading">
             <span className="eyebrow">
@@ -615,6 +631,7 @@ function App() {
               </p>
             )}
             <form
+              ref={composerRef}
               className="composer"
               onSubmit={(e) => {
                 e.preventDefault();

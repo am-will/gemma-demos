@@ -17,3 +17,9 @@ Twelve specialist starter prompts launch one tool-using assistant; they are not 
 Seven native function-calling tools calculate portfolio contributions and ETF tech overlap, expense transactions, cash flow, down-payment scenarios, hypothetical rebalancing, and debt payoff. Actual tool results appear beside the conversation with expandable JSON source data. Small-screen layouts put evidence below the relevant response. Activity indicates tool execution and answer preparation, not private model reasoning. Latency measures the full model/tool loop; no synthetic delays or benchmark speedup claims.
 
 No external financial data or real accounts. Retirement holdings, tax basis, mortgage underwriting and market news are unavailable. Financial tools are read-only; hypothetical allocations do not execute trades or move funds. The default home scenario includes six months of living expenses and debt payments in reserves, $12,000 closing costs, continued regular investing, and no investment returns or brokerage sales. Mortgage qualification is not calculated. Public hosting, user authentication and persistent storage are outside this local demo's scope.
+
+## Presentation flow
+
+The default route types a text-only home-buying prompt, docks the opening composer into the assistant, pauses, then animates a cursor press before making one live API request. A successful completion holds the answer for 3.7 seconds, then shows the supplied 16x speed bumper and Cerebras/Qwen lockup. The speed statement is supplied campaign copy, not a measurement calculated by this demo. Errors and stopped requests do not trigger the ending.
+
+Use `?assistant=1` for the original interactive assistant, or `?ending=2` to preview the ending. Reload `/` to replay the full sequence. Intro and ending assets were adapted from `qwen-sec-intro-concepts`; there are no attachment requests.
