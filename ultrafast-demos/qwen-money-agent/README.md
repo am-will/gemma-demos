@@ -20,6 +20,6 @@ No external financial data or real accounts. Retirement holdings, tax basis, mor
 
 ## Presentation flow
 
-The default route types a text-only home-buying prompt, docks the opening composer into the assistant, pauses, then animates a cursor press before making one live API request. A successful completion holds the answer for 3.7 seconds, then shows the supplied 16x speed bumper and Cerebras/Qwen lockup. The speed statement is supplied campaign copy, not a measurement calculated by this demo. Errors and stopped requests do not trigger the ending.
+The default route types a text-only home-buying prompt, docks the opening composer into the assistant, pauses, then animates a cursor press before making one live API request. Typing the follow-up starts 2.5 seconds after the first request. It waits for the first response to complete before clicking Send, preserving the conversation. A successful second completion holds the answer for 3 seconds, then shows the supplied 16x speed bumper and Cerebras/Qwen lockup. The speed statement is supplied campaign copy, not a measurement calculated by this demo. Errors and stopped requests do not trigger the ending.
 
 Use `?assistant=1` for the original interactive assistant, or `?ending=2` to preview the ending. Reload `/` to replay the full sequence. Intro and ending assets were adapted from `qwen-sec-intro-concepts`; there are no attachment requests.

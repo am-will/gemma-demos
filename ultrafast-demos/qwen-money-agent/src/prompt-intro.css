@@ -20,3 +20,9 @@
 
 /* Align the SVG tip at (3, 2) with the 33px send button center. */
 .is-docked .money-intro-pointer { right:8.5px; bottom:-2.5px; }
+
+.follow-pointer { position:fixed; z-index:60; pointer-events:none; opacity:0; transform:translate(-110px,-70px); transform-origin:3px 2px; filter:drop-shadow(0 2px 2px #0003); }
+.follow-aiming { opacity:1; transform:translate(0,0); transition:transform .8s cubic-bezier(.25,.7,.25,1),opacity .1s; }
+.follow-pressing { opacity:1; transform:scale(.92); }
+.send-button.demo-pressing { transform:scale(.9); background:#d94b20; }
+@media(prefers-reduced-motion:reduce) { .follow-pointer { transition:none; } }

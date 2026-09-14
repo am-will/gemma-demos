@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { agents } from "./agents";
 import "./style.css";
+import { FollowUp, FOLLOW_UP } from "./FollowUp";
 import { PromptIntro, HOME_PROMPT } from "./PromptIntro";
 import { BrandEndingOverlay } from "./BrandEnding";
 const money = (n, digits = 0) =>
@@ -90,9 +91,6 @@ function Evidence({ data }) {
   if (!data) return null;
   return (
     <section className="evidence">
-      <div className="eyebrow">
-        TOOL EVIDENCE <Icon name="check" size={14} />
-      </div>
       <h3>{data.title}</h3>
       {data.kind === "portfolio" && (
         <>
@@ -251,6 +249,9 @@ function App() {
   const composerRef = useRef(null);
   const endingTimer = useRef(null);
   const introRun = useRef(false);
+  const [followUp, setFollowUp] = useState(false);
+  const followTimer = useRef(null);
+  useEffect(() => () => clearTimeout(followTimer.current), []);
   useEffect(() => () => clearTimeout(endingTimer.current), []);
   const [overview, setOverview] = useState(null),
     [status, setStatus] = useState(null),
@@ -294,7 +295,7 @@ function App() {
       const scroller = chatEnd.current?.parentElement;
       scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
     }
-  }, [messages.length]);
+  }, [messages]);
   async function send(prompt, agentId = "") {
     if (sending.current || !prompt.trim()) return;
     sending.current = true;
@@ -354,9 +355,9 @@ function App() {
         if (e.type === "done") {
           terminal = true;
           update((m) => ({ ...m, stats: e, status: "" }));
-          if (introRun.current) {
+          if (introRun.current === 2) {
             introRun.current = false;
-            endingTimer.current = setTimeout(() => setEnding(true), 3700);
+            endingTimer.current = setTimeout(() => setEnding(true), 3000);
           }
         }
         if (e.type === "error") {
@@ -379,6 +380,8 @@ function App() {
         );
     } catch (error) {
       introRun.current = false;
+      clearTimeout(followTimer.current);
+      setFollowUp(false);
       clearTimeout(endingTimer.current);
       update((m) => ({
         ...m,
@@ -415,7 +418,8 @@ function App() {
   ];
   return (
     <div className={`app${intro ? " money-app-intro" : ""}`}>
-      {intro && !ending && <PromptIntro ready={!!overview && !!status?.configured} error={initError || (status && !status.configured ? "Configure the Cerebras API key, then reload to start." : "")} targetRef={composerRef} onDock={() => setInput(HOME_PROMPT)} onComplete={() => { setIntro(false); introRun.current = true; send(HOME_PROMPT, "home"); }} />}
+      {intro && !ending && <PromptIntro ready={!!overview && !!status?.configured} error={initError || (status && !status.configured ? "Configure the Cerebras API key, then reload to start." : "")} targetRef={composerRef} onDock={() => setInput(HOME_PROMPT)} onComplete={() => { setIntro(false); introRun.current = 1; send(HOME_PROMPT, "home"); followTimer.current = setTimeout(() => setFollowUp(true), 2500); }} />}
+      {followUp && <FollowUp inputRef={inputRef} composerRef={composerRef} busy={busy} onType={setInput} onSend={() => { setFollowUp(false); introRun.current = 2; send(FOLLOW_UP, "home"); }} />}
       {ending && <BrandEndingOverlay variant="2" sequenceKey={1} />}
       <div className="workspace" inert={intro || ending ? true : undefined}>
         <aside className={`library ${mobileLibrary ? "mobile-open" : ""}`}>
