@@ -1,0 +1,12 @@
+{
+  "name": "qwen-money-agent",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5196 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4196 --strictPort",
+    "test": "node --test server/*.test.js"
+  }
+}
