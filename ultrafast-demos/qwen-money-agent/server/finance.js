@@ -92,32 +92,36 @@ const categories = {
   Insurance: 180,
   Health: 135,
 };
+// Illustrative merchant-level transactions; weights split the existing monthly
+// category budgets exactly, preserving the home-buying and cash-flow scenarios.
+const expenseDetails = {
+  Housing: [["Parkside Apartments", 1]],
+  Groceries: [["King Soopers", 36], ["Trader Joe's", 29], ["Whole Foods", 21], ["King Soopers", 14]],
+  Dining: [["DoorDash", 21], ["Starbucks", 8], ["Chipotle", 12], ["DoorDash", 18], ["Local brunch cafe", 17], ["Starbucks", 7], ["Sushi dinner", 17]],
+  Transport: [["Shell", 45], ["RTD transit pass", 35], ["Uber", 20]],
+  Utilities: [["Xcel Energy", 65], ["Xfinity Internet", 35]],
+  Shopping: [["Amazon", 32], ["Target", 24], ["Nike", 27], ["Amazon", 17]],
+  Subscriptions: [["Netflix", 23], ["Spotify", 12], ["YouTube Premium", 14], ["Adobe Photography", 20], ["iCloud+", 3], ["Hulu", 19], ["Audible", 12]],
+  Insurance: [["State Farm", 1]],
+  Health: [["Gym membership", 55], ["Walgreens", 25], ["Dental copay", 20]],
+};
 export const transactions = ["2026-06", "2026-07", "2026-08"].flatMap(
-  (month, i) =>
-    Object.entries(categories).flatMap(([category, amount], j) => {
-      const total = Math.round(
-        amount * (category === "Housing" ? 1 : [0.92, 1, 1.08][i]),
-      );
-      return [0, 1].map((k) => ({
+  (month, i) => Object.entries(categories).flatMap(([category, amount], j) => {
+    const total = Math.round(amount * (category === "Housing" ? 1 : [0.92, 1, 1.08][i]));
+    const details = expenseDetails[category];
+    const weightTotal = details.reduce((n, [, weight]) => n + weight, 0);
+    let allocated = 0;
+    return details.map(([merchant, weight], k) => {
+      const cents = k === details.length - 1 ? total * 100 - allocated : Math.round(total * 100 * weight / weightTotal);
+      allocated += cents;
+      return {
         id: `${month}-${j}-${k}`,
-        date: `${month}-${k ? "22" : "08"}`,
-        merchant:
-          category === "Housing"
-            ? "Parkside Apartments"
-            : {
-                Groceries: "Whole Foods",
-                Dining: "Restaurants & coffee",
-                Transport: "Fuel & transit",
-                Utilities: "Internet & energy",
-                Shopping: "Retail purchases",
-                Subscriptions: "Digital subscriptions",
-                Insurance: "Insurance premium",
-                Health: "Health & wellness",
-              }[category],
-        category,
-        amount: k ? total - Math.floor(total / 2) : Math.floor(total / 2),
-      }));
-    }),
+        date: `${month}-${String(2 + ((j * 3 + k * 4) % 26)).padStart(2, "0")}`,
+        merchant, category, amount: cents / 100,
+        recurring: ["Housing", "Subscriptions", "Utilities", "Insurance"].includes(category) || merchant === "Gym membership",
+      };
+    });
+  }),
 );
 export const round = (value) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
@@ -176,6 +180,11 @@ export function spending(month = "2026-08", category) {
           (t) => t.amount,
         ),
       })),
+    merchants: [...new Set(rows.map((t) => t.merchant))].map((merchant) => {
+      const charges = rows.filter((t) => t.merchant === merchant);
+      return { merchant, category: charges[0].category, amount: sum(charges, (t) => t.amount), count: charges.length };
+    }).sort((a, b) => b.amount - a.amount),
+    subscriptions: rows.filter((t) => t.category === "Subscriptions"),
     transactions: rows,
     note: "Living expenses only; debt payments and savings/investment transfers are separate.",
   };
@@ -284,6 +293,64 @@ export function homePlan(args = {}) {
       "Cash-budget ceiling, not mortgage qualification or a home-price estimate. No investment growth, interest or inflation. Retirement excluded. Brokerage liquidation, if included, is gross of unknown capital-gains taxes. Existing $600/month investment contribution continues.",
   };
 }
+export function homeAffordability(args = {}) {
+  const months = number(args.months, 0, 0, 120, "months");
+  if (!Number.isInteger(months)) throw Error("months must be a whole number.");
+  const ratePct = number(args.ratePct, 6.5, 0, 20, "ratePct");
+  const c = cashflow(), o = overview();
+  const nonHousingExpenses = c.livingExpenses - categories.Housing;
+  const projectedCash = round(o.cash + c.availableMonthly * months);
+  // Illustrative planning assumptions, not live rates or lending rules.
+  const buffer = 750, closingPct = .03, taxPct = .01, maintenancePct = .01;
+  const insurance = 150, hoa = 100, pmiPct = .005;
+  const housingBudget = Math.min(profile.monthlyGrossIncome * .28,
+    profile.monthlyGrossIncome * .36 - c.debtPayments,
+    profile.monthlyNetIncome - nonHousingExpenses - c.debtPayments - c.investmentContribution - buffer);
+  const r = ratePct / 1200, n = 360;
+  const paymentFactor = r === 0 ? 1 / n : r / (1 - (1 + r) ** -n);
+  function atPrice(price) {
+    const taxes = price * taxPct / 12, maintenance = price * maintenancePct / 12;
+    let down = 0;
+    // Cash = down payment + closing costs + six months of post-purchase essentials.
+    // Solve directly for each PMI band; select the band consistent with its down payment.
+    for (const withPmi of [false, true]) {
+      const factor = paymentFactor + (withPmi ? pmiPct / 12 : 0);
+      const candidate = (projectedCash - price * closingPct - 6 * (nonHousingExpenses + c.debtPayments + price * factor + taxes + maintenance + insurance + hoa)) / (1 - 6 * factor);
+      down = Math.min(price, Math.max(0, candidate));
+      if ((down / Math.max(price, 1) < .2) === withPmi) break;
+    }
+    const loan = price - down;
+    const principalInterest = loan * paymentFactor;
+    const pmi = down < price * .2 ? loan * pmiPct / 12 : 0;
+    const monthlyTotal = principalInterest + taxes + maintenance + insurance + hoa + pmi;
+    const reserve = 6 * (nonHousingExpenses + c.debtPayments + monthlyTotal);
+    return { price, downPayment: down, loan, principalInterest, taxes, maintenance, insurance, hoa, pmi,
+      monthlyTotal, reserve, closingCosts: price * closingPct,
+      feasible: down >= price * .05 && monthlyTotal <= housingBudget && down + price * closingPct + reserve <= projectedCash + .01 };
+  }
+  let low = 0, high = 2000000;
+  for (let i = 0; i < 70; i++) { const mid = (low + high) / 2; if (atPrice(mid).feasible) low = mid; else high = mid; }
+  const result = atPrice(Math.floor(low / 1000) * 1000);
+  return {
+    kind: "affordability", title: "Your home-buying budget", months, ratePct,
+    estimatedHomePrice: result.feasible ? result.price : 0,
+    ...Object.fromEntries(Object.entries(result).filter(([k,v]) => typeof v === "number" && k !== "price").map(([k,v]) => [k, round(v)])),
+    totalCashRequired: round(result.downPayment + result.closingCosts + result.reserve),
+    additionalSavingsNeeded: round(Math.max(0, result.downPayment + result.closingCosts + result.reserve - o.cash)),
+    monthlySavingsGoal: months > 0 ? round(Math.max(0, result.downPayment + result.closingCosts + result.reserve - o.cash) / months) : 0,
+    downPaymentPct: round(result.downPayment / Math.max(result.price, 1) * 100),
+    savingsMilestones: Array.from({length: Math.ceil(months / 3)}, (_, i) => {
+      const month = Math.min(months, (i + 1) * 3);
+      return { month, totalCash: round(o.cash + c.availableMonthly * month), newSavings: round(c.availableMonthly * month) };
+    }),
+    projectedCash, housingBudget: round(housingBudget), monthlyNetIncome: profile.monthlyNetIncome,
+    monthlyGrossIncome: profile.monthlyGrossIncome, debtPayments: c.debtPayments,
+    nonHousingExpenses, investmentContribution: c.investmentContribution,
+    monthlyRemaining: round(profile.monthlyNetIncome - nonHousingExpenses - c.debtPayments - c.investmentContribution - result.monthlyTotal),
+    assumptions: "Illustrative estimate, not mortgage approval. 30-year fixed loan; assumed rate, not a live quote. 3% closing costs, 1% annual property tax, 1% maintenance, $150/month insurance, $100 HOA, 0.5% annual PMI below 20% down, 5% minimum down. Planning caps: 28% gross income for housing and 36% including existing debts, plus a $750 monthly cash cushion. Six months of post-purchase expenses and debt payments retained; brokerage and retirement untouched. Current rent is replaced by the new housing cost, not counted twice. Future scenarios hold income, prices, rates and expenses constant.",
+  };
+}
+
 export function simulate(args) {
   const amount = number(args.amount, undefined, 0, 1000000, "amount");
   const p = portfolio(),
@@ -381,6 +448,10 @@ const schema = (name, description, properties = {}, required = []) => ({
   },
 });
 export const toolDefinitions = [
+  schema("estimate_home_affordability", "Estimate a home purchase budget using income, cash, debt, mortgage payments, ownership costs and emergency reserves. Defaults to buying today; use months for waiting scenarios. Assumed rates, not mortgage approval.", {
+    months: { type: "integer", minimum: 0, maximum: 120 },
+    ratePct: { type: "number", minimum: 0, maximum: 20 },
+  }),
   schema(
     "get_financial_overview",
     "Read the fictional customer profile, all balances, debts, goals, net worth and cash flow.",
@@ -429,6 +500,7 @@ export const toolDefinitions = [
   ),
 ];
 export const toolLabels = {
+  estimate_home_affordability: "Estimating your home budget",
   get_financial_overview: "Reading your accounts",
   analyze_portfolio: "Analyzing portfolio positions",
   analyze_spending: "Reviewing transactions",
@@ -441,6 +513,7 @@ export function runTool(name, args = {}) {
   if (!args || typeof args !== "object" || Array.isArray(args))
     throw new Error("Tool arguments must be an object.");
   switch (name) {
+    case "estimate_home_affordability": return homeAffordability(args);
     case "get_financial_overview":
       return overview();
     case "analyze_portfolio":

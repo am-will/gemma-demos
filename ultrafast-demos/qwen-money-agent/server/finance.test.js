@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  homeAffordability,
   overview,
   portfolio,
   homePlan,
@@ -60,7 +61,7 @@ test("spending is backed by transactions and increased in August", () => {
   const s = spending();
   assert.equal(
     s.total,
-    s.transactions.reduce((n, t) => n + t.amount, 0),
+    Math.round(s.transactions.reduce((n, t) => n + t.amount, 0) * 100) / 100,
   );
   assert.ok(s.total > spending("2026-07").total);
   assert.throws(() => spending("2026-09"));
@@ -79,4 +80,40 @@ test("higher payments reduce payoff time and interest; invalid scenarios are rej
   ])
     assert.throws(() => homePlan(args));
   assert.throws(() => runTool("transfer_money", {}));
+});
+
+test("merchant detail reconciles without changing existing planning figures", () => {
+  for (const month of ["2026-06", "2026-07", "2026-08"]) {
+    const s = spending(month);
+    assert.equal(Math.round(s.merchants.reduce((n, t) => n + t.amount, 0) * 100) / 100, s.total);
+    assert.equal(Math.round(s.subscriptions.reduce((n, t) => n + t.amount, 0)), s.categories.find(c => c.name === "Subscriptions").amount);
+    assert.equal(s.subscriptions.length, 7);
+    assert.ok(s.merchants.some(t => t.merchant === "DoorDash" && t.count === 2));
+  }
+  assert.equal(homePlan().maxDownPayment, 46106);
+  assert.equal(homePlan({months: 24}).maxDownPayment, 74810);
+});
+
+test("home affordability respects cash, payment and reserve constraints", () => {
+  for (const args of [{}, {months:12}, {ratePct:0}, {ratePct:12}]) {
+    const a = homeAffordability(args);
+    assert.ok(a.estimatedHomePrice > 0);
+    assert.ok(a.monthlyTotal <= a.housingBudget);
+    assert.ok(a.downPayment >= a.estimatedHomePrice * .05);
+    assert.ok(a.downPayment + a.closingCosts + a.reserve <= a.projectedCash + .02);
+    assert.ok(Math.abs(a.reserve - 6 * (a.nonHousingExpenses + a.debtPayments + a.monthlyTotal)) < .05);
+    assert.ok(Math.abs(a.monthlyTotal - a.principalInterest - a.taxes - a.maintenance - a.insurance - a.hoa - a.pmi) < .05);
+  }
+  assert.ok(homeAffordability({months:12}).estimatedHomePrice > homeAffordability().estimatedHomePrice);
+  assert.ok(homeAffordability({ratePct:12}).estimatedHomePrice < homeAffordability().estimatedHomePrice);
+  assert.throws(()=>homeAffordability({months:1.5}));
+});
+
+test("home savings plan includes the protected reserve in its target", () => {
+  const plan = homeAffordability({months:12});
+  assert.ok(Math.abs(plan.totalCashRequired - plan.downPayment - plan.closingCosts - plan.reserve) < .03);
+  assert.ok(Math.abs(plan.additionalSavingsNeeded - (plan.totalCashRequired - overview().cash)) < .03);
+  assert.ok(plan.monthlySavingsGoal <= cashflow().availableMonthly);
+  assert.deepEqual(plan.savingsMilestones.map(m => m.month), [3,6,9,12]);
+  assert.equal(plan.savingsMilestones.at(-1).totalCash, plan.projectedCash);
 });

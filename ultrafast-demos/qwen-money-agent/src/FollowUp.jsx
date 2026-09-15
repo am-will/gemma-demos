@@ -1,7 +1,7 @@
+import { typingDelay } from "./typing-timing";
 import React, { useEffect, useRef, useState } from 'react';
-export const FOLLOW_UP = 'What if I wait another year? How much more could I put down without touching my investments or emergency fund?';
 
-export function FollowUp({ inputRef, composerRef, busy, onType, onSend }) {
+export function FollowUp({ prompt, inputRef, composerRef, busy, onType, onSend }) {
   const [phase, setPhase] = useState('typing');
   const [point, setPoint] = useState(null);
   const callbacks = useRef({ onType, onSend });
@@ -10,13 +10,13 @@ export function FollowUp({ inputRef, composerRef, busy, onType, onSend }) {
     inputRef.current?.focus({ preventScroll: true });
     let index = 0, timer;
     const type = () => {
-      callbacks.current.onType(FOLLOW_UP.slice(0, ++index));
-      if (index < FOLLOW_UP.length) timer = setTimeout(type, [42,65,50,78,55][index % 5] / 1.2);
+      callbacks.current.onType(prompt.slice(0, ++index));
+      if (index < prompt.length) timer = setTimeout(type, typingDelay(index));
       else setPhase('ready');
     };
     type();
     return () => clearTimeout(timer);
-  }, [inputRef]);
+  }, [inputRef, prompt]);
   useEffect(() => {
     if (phase !== 'ready' || busy) return;
     const rect = composerRef.current.querySelector('.send-button').getBoundingClientRect();

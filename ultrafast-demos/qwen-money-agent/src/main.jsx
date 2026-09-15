@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { PortfolioChart } from "./PortfolioChart";
+import { demoScenarios } from "./demo-scenarios";
 import { agents } from "./agents";
 import "./style.css";
-import { FollowUp, FOLLOW_UP } from "./FollowUp";
-import { PromptIntro, HOME_PROMPT } from "./PromptIntro";
+import { FollowUp } from "./FollowUp";
+import { PromptIntro } from "./PromptIntro";
 import { BrandEndingOverlay } from "./BrandEnding";
 const money = (n, digits = 0) =>
   new Intl.NumberFormat("en-US", {
@@ -118,6 +120,25 @@ function Evidence({ data }) {
           ))}
         </>
       )}
+      {data.kind === "affordability" && <>
+        <div className="home-price-label">Estimated purchase budget</div>
+        <div className="evidence-total">{money(data.estimatedHomePrice)}</div>
+        <p className="muted">{data.months ? `Buying in ${data.months} months` : "Buying today"} · Planning estimate</p>
+        <div className="home-monthly"><span>Monthly ownership cost</span><strong>{money(data.monthlyTotal)}<small>/mo</small></strong></div>
+        <dl>
+          <dt>Mortgage payment</dt><dd>{money(data.principalInterest)}</dd>
+          <dt>Property tax</dt><dd>{money(data.taxes)}</dd>
+          <dt>Insurance + HOA</dt><dd>{money(data.insurance + data.hoa)}</dd>
+          <dt>Maintenance reserve</dt><dd>{money(data.maintenance)}</dd>
+          <dt>Mortgage insurance</dt><dd>{money(data.pmi)}</dd>
+        </dl>
+        <h3>Cash at closing</h3>
+        <dl><dt>Down payment</dt><dd>{money(data.downPayment)}</dd>
+          <dt>Closing costs</dt><dd>{money(data.closingCosts)}</dd>
+          <dt>Emergency fund kept</dt><dd>{money(data.reserve)}</dd>
+          <dt>Monthly cash left</dt><dd>{money(data.monthlyRemaining)}</dd></dl>
+        <p className="muted">{data.ratePct}% assumed rate · 30-year fixed</p>
+      </>}
       {data.kind === "home" && (
         <>
           <div className="evidence-total">{money(data.maxDownPayment)}</div>
@@ -155,6 +176,12 @@ function Evidence({ data }) {
               </div>
             </div>
           ))}
+          {data.subscriptions?.length > 0 && <>
+            <h3>Monthly subscriptions</h3>
+            <dl>{data.subscriptions.map((t) => <React.Fragment key={t.id}>
+              <dt>{t.merchant}</dt><dd>{money(t.amount, 2)}</dd>
+            </React.Fragment>)}</dl>
+          </>}
         </>
       )}
       {data.kind === "cashflow" && (
@@ -244,6 +271,7 @@ function Evidence({ data }) {
   );
 }
 function App() {
+  const scenario = demoScenarios[new URLSearchParams(location.search).get("demo")] || demoScenarios.home;
   const [intro, setIntro] = useState(!new URLSearchParams(location.search).has("assistant"));
   const [ending, setEnding] = useState(new URLSearchParams(location.search).get("ending") === "2");
   const composerRef = useRef(null);
@@ -251,6 +279,7 @@ function App() {
   const introRun = useRef(false);
   const [followUp, setFollowUp] = useState(false);
   const followTimer = useRef(null);
+  const homeTarget = useRef(null);
   useEffect(() => () => clearTimeout(followTimer.current), []);
   useEffect(() => () => clearTimeout(endingTimer.current), []);
   const [overview, setOverview] = useState(null),
@@ -342,6 +371,9 @@ function App() {
             tools: [...m.tools, { ...e, running: true }],
           }));
         if (e.type === "tool_result") {
+          if (introRun.current === 2 && e.data?.kind === "affordability" && e.data.estimatedHomePrice > 0) {
+            homeTarget.current = e.data.estimatedHomePrice;
+          }
           update((m) => ({
             ...m,
             tools: m.tools.map((t) =>
@@ -355,9 +387,12 @@ function App() {
         if (e.type === "done") {
           terminal = true;
           update((m) => ({ ...m, stats: e, status: "" }));
-          if (introRun.current === 2) {
+          if (introRun.current === 2 && scenario.agentId === "home") {
+            const target = homeTarget.current ? `a ${money(homeTarget.current)} house` : "a house at the price you just estimated";
+            followTimer.current = setTimeout(() => setFollowUp(`Okay, help me build a 12-month financial plan to buy ${target}. Set a monthly savings goal and quarterly milestones, while keeping my investments and emergency fund intact.`), 5000);
+          } else if (introRun.current >= 2) {
             introRun.current = false;
-            endingTimer.current = setTimeout(() => setEnding(true), 3000);
+            endingTimer.current = setTimeout(() => setEnding(true), 5000);
           }
         }
         if (e.type === "error") {
@@ -412,14 +447,14 @@ function App() {
   const starters = [agents[0], agents[1], agents[2], agents[5]];
   const shortPrompts = [
     "Why is my portfolio down this week?",
-    "What’s the largest down payment I can afford?",
+    "How much house can I afford?",
     "Where is my money going?",
     "How can I pay off my debt faster?",
   ];
   return (
     <div className={`app${intro ? " money-app-intro" : ""}`}>
-      {intro && !ending && <PromptIntro ready={!!overview && !!status?.configured} error={initError || (status && !status.configured ? "Configure the Cerebras API key, then reload to start." : "")} targetRef={composerRef} onDock={() => setInput(HOME_PROMPT)} onComplete={() => { setIntro(false); introRun.current = 1; send(HOME_PROMPT, "home"); followTimer.current = setTimeout(() => setFollowUp(true), 2500); }} />}
-      {followUp && <FollowUp inputRef={inputRef} composerRef={composerRef} busy={busy} onType={setInput} onSend={() => { setFollowUp(false); introRun.current = 2; send(FOLLOW_UP, "home"); }} />}
+      {intro && !ending && <PromptIntro prompt={scenario.prompt} ready={!!overview && !!status?.configured} error={initError || (status && !status.configured ? "Configure the Cerebras API key, then reload to start." : "")} targetRef={composerRef} onDock={() => setInput(scenario.prompt)} onComplete={() => { setIntro(false); introRun.current = 1; send(scenario.prompt, scenario.agentId); followTimer.current = setTimeout(() => setFollowUp(scenario.followUp), 3500); }} />}
+      {followUp && <FollowUp prompt={followUp} inputRef={inputRef} composerRef={composerRef} busy={busy} onType={setInput} onSend={() => { setFollowUp(false); introRun.current += 1; send(followUp, scenario.agentId); }} />}
       {ending && <BrandEndingOverlay variant="2" sequenceKey={1} />}
       <div className="workspace" inert={intro || ending ? true : undefined}>
         <aside className={`library ${mobileLibrary ? "mobile-open" : ""}`}>
@@ -504,11 +539,6 @@ function App() {
                   <br />
                   <span>Let’s talk about them.</span>
                 </h1>
-                <p>
-                  Ask a question. Explore a what-if.
-                  <br />
-                  Get answers grounded in your financial picture.
-                </p>
                 <div className="starters">
                   {starters.map((a, i) => (
                     <button
@@ -749,20 +779,7 @@ function App() {
                       {money(overview.weekChange)}
                       <span>{overview.weekReturnPct}%</span>
                     </div>
-                    <svg
-                      viewBox="0 0 260 56"
-                      aria-label="Illustrative weekly portfolio trend with daily fluctuations and an overall decline"
-                      role="img"
-                    >
-                      <path
-                        d="M2 10 L9 13 L16 8 L23 15 L30 12 L37 20 L44 17 L51 23 L58 19 L65 15 L72 21 L79 18 L86 26 L93 24 L100 31 L107 27 L114 33 L121 29 L128 23 L135 28 L142 25 L149 34 L156 31 L163 38 L170 34 L177 41 L184 36 L191 39 L198 32 L205 36 L212 42 L219 39 L226 46 L233 42 L240 48 L247 44 L258 48"
-                        fill="none"
-                        stroke="#e16b48"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                    <PortfolioChart value={overview.brokerage} change={overview.weekChange} />
                     <button
                       disabled={disabled}
                       onClick={() => send(agents[0].prompt, "portfolio")}
@@ -772,8 +789,9 @@ function App() {
                   </section>
                   <section className="goal">
                     <div className="section-label">
-                      <Icon name="home" size={17} /> First home
+                      <Icon name="home" size={17} /> Financial Goals
                     </div>
+                    <p className="goal-name">First home</p>
                     <strong>
                       {money(overview.cash)} <span>/ $100,000</span>
                     </strong>

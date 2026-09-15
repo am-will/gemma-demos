@@ -1,10 +1,10 @@
+import { typingDelay } from "./typing-timing";
 import React, { useEffect, useRef, useState } from 'react';
 import '../../shared/circular-dot-field.css';
 import './prompt-intro.css';
 
-export const HOME_PROMPT = 'I want to buy a house. What is the largest down payment I can afford?';
 
-export function PromptIntro({ ready, error, targetRef, onDock, onComplete }) {
+export function PromptIntro({ prompt, ready, error, targetRef, onDock, onComplete }) {
   const [text, setText] = useState('');
   const [phase, setPhase] = useState('typing');
   const panel = useRef(null);
@@ -15,14 +15,14 @@ export function PromptIntro({ ready, error, targetRef, onDock, onComplete }) {
   useEffect(() => {
     let index = 0, timer;
     const type = () => {
-      index += reduced.current ? HOME_PROMPT.length : 1;
-      setText(HOME_PROMPT.slice(0, index));
-      if (index < HOME_PROMPT.length) timer = setTimeout(type, [42, 65, 50, 78, 55][index % 5] / 1.2);
+      index += reduced.current ? prompt.length : 1;
+      setText(prompt.slice(0, index));
+      if (index < prompt.length) timer = setTimeout(type, typingDelay(index));
       else setPhase('ready');
     };
     timer = setTimeout(type, 650);
     return () => clearTimeout(timer);
-  }, []);
+  }, [prompt]);
 
   useEffect(() => {
     if (phase !== 'ready' || !ready) return;

@@ -1341,3 +1341,17 @@ dd {
 .welcome-mark {
   background: #fff;
 }
+
+.portfolio-chart { margin:16px 0 8px; }
+.chart-value { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:12px; }
+.chart-value strong { font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; }
+.chart-value span { font-size:9px; color:var(--muted); }
+.weekly .portfolio-chart svg { display:block; width:100%; height:auto; overflow:visible; margin:0; }
+.portfolio-chart text { font:9px var(--mono); fill:#999387; }
+.goal .goal-name { color:var(--muted); margin:18px 0 8px; font-size:12px; }
+.home-price-label { font:10px var(--mono); text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:18px 0 8px; }
+.home-monthly { padding:16px; margin:20px 0; border:1px solid #e4d6c8; background:#fff9f3; border-radius:12px; display:grid; gap:8px; }
+.home-monthly span { font-size:11px; color:var(--muted); }
+.home-monthly strong { font-size:27px; letter-spacing:-1px; }
+.home-monthly small { font-size:12px; color:var(--muted); font-weight:400; margin-left:5px; }
+.welcome h1 { margin-bottom:28px; }

@@ -13,9 +13,9 @@ export const agents = [
     category: "Planning",
     icon: "home",
     name: "Home-buying planner",
-    description: "Find room for your next big move",
+    description: "Find your price range and monthly cost",
     prompt:
-      "What’s the largest down payment I can afford in 12 months while keeping a six-month emergency fund?",
+      "How much house can I afford based on my income and savings, while keeping a six-month emergency fund?",
   },
   {
     id: "spending",
