@@ -1,0 +1,241 @@
+.qbrand-demo {
+  min-height: 100%;
+  background: #f3f2ef;
+}
+
+.qbrand-ending.q-dot-field {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(248, 247, 244, .99) 0 32%, rgba(248, 247, 244, .96) 58%, rgba(248, 247, 244, .76) 100%),
+    #f5f4f1;
+  font-family: "Manrope", sans-serif;
+  animation: qbrandFieldIn .72s cubic-bezier(.22, .78, .22, 1) both;
+}
+
+.qbrand-ending.q-dot-field::before,
+.qbrand-ending.q-dot-field::after {
+  content: "";
+  position: absolute;
+  width: min(68rem, 56vw);
+  aspect-ratio: 1;
+  background-image: radial-gradient(circle, rgba(241, 90, 41, .94) 0 .12rem, transparent .145rem);
+  background-size: .78rem .78rem;
+  opacity: .58;
+}
+
+.qbrand-ending.q-dot-field::before {
+  left: -8vw;
+  bottom: -8vw;
+  -webkit-mask-image: radial-gradient(circle at bottom left, #000 0 16%, rgba(0, 0, 0, .88) 28%, rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, .25) 52%, rgba(0, 0, 0, .08) 63%, rgba(0, 0, 0, .02) 72%, rgba(0, 0, 0, .004) 81%, transparent 92%);
+  mask-image: radial-gradient(circle at bottom left, #000 0 16%, rgba(0, 0, 0, .88) 28%, rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, .25) 52%, rgba(0, 0, 0, .08) 63%, rgba(0, 0, 0, .02) 72%, rgba(0, 0, 0, .004) 81%, transparent 92%);
+}
+
+.qbrand-ending.q-dot-field::after {
+  right: -8vw;
+  top: -8vw;
+  -webkit-mask-image: radial-gradient(circle at top right, #000 0 16%, rgba(0, 0, 0, .88) 28%, rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, .25) 52%, rgba(0, 0, 0, .08) 63%, rgba(0, 0, 0, .02) 72%, rgba(0, 0, 0, .004) 81%, transparent 92%);
+  mask-image: radial-gradient(circle at top right, #000 0 16%, rgba(0, 0, 0, .88) 28%, rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, .25) 52%, rgba(0, 0, 0, .08) 63%, rgba(0, 0, 0, .02) 72%, rgba(0, 0, 0, .004) 81%, transparent 92%);
+}
+
+.qbrand-model-stage,
+.qbrand-brand-stage {
+  position: relative;
+  z-index: 1;
+}
+
+.qbrand-model-stage {
+  display: grid;
+  justify-items: center;
+  gap: clamp(1.35rem, 2.6vw, 2.4rem);
+}
+
+.qbrand-model-stage h1 {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: .28em;
+  margin: 0;
+  color: #171716;
+  font-size: clamp(3.25rem, 5.25vw, 6.1rem);
+  font-weight: 570;
+  line-height: 1;
+  letter-spacing: -.062em;
+  animation: qbrandTitleIn .7s cubic-bezier(.2, .86, .24, 1) both;
+}
+
+.qbrand-model-stage h1 strong {
+  font: inherit;
+  animation: qbrandSuffixIn .62s .24s cubic-bezier(.2, .86, .24, 1) backwards;
+}
+
+.qbrand-throughput {
+  min-height: 4.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.05rem;
+  color: #ed5a2a;
+  font-size: clamp(1.7rem, 2.7vw, 3.15rem);
+  font-weight: 500;
+  letter-spacing: -.045em;
+  animation: qbrandSpeedIn .54s .55s cubic-bezier(.2, .86, .24, 1) backwards;
+}
+
+.qbrand-throughput span:first-child { white-space: nowrap; }
+.qbrand-throughput b {
+  width: 2.1ch;
+  display: inline-block;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+.qbrand-throughput > i { width: 1px; height: 3rem; background: #c7c5bf; transform: scaleY(0); transition: transform .38s ease; }
+.qbrand-throughput:has(.qbrand-speed-partner.is-visible) > i { transform: scaleY(1); }
+
+.qbrand-speed-partner {
+  display: block;
+  width: 0;
+  height: auto;
+  object-fit: contain;
+  opacity: 0;
+  transform: translateX(-.8rem);
+  transition: width .55s cubic-bezier(.2, .86, .24, 1), opacity .38s ease, transform .55s cubic-bezier(.2, .86, .24, 1);
+}
+
+.qbrand-speed-partner.is-visible {
+  width: clamp(10.5rem, 16vw, 16rem);
+  opacity: 1;
+  transform: none;
+}
+
+.qbrand-brand-stage {
+  width: min(94vw, 84rem);
+  display: grid;
+  justify-items: center;
+}
+
+.qbrand-brand-lockup {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(2rem, 4vw, 4.8rem);
+}
+
+.qbrand-brand-lockup img,
+.qbrand-brand-lockup .qbrand-qwen-logo {
+  width: auto;
+  max-width: 42vw;
+  object-fit: contain;
+  opacity: 0;
+  transition:
+    opacity .38s ease,
+    transform .72s cubic-bezier(.2, .86, .24, 1),
+    clip-path .72s cubic-bezier(.2, .86, .24, 1);
+}
+
+.qbrand-cerebras-logo {
+  justify-self: end;
+  height: clamp(6.7rem, 8.6vw, 8.8rem);
+  transform: translateX(clamp(2rem, 4vw, 4.8rem)) scale(.92);
+  transform-origin: right center;
+  clip-path: inset(0 0 0 100%);
+}
+
+.qbrand-brand-lockup > i {
+  z-index: 2;
+  justify-self: center;
+  width: 1px;
+  height: clamp(9.5rem, 11vw, 11rem);
+  background: #aaa8a2;
+  animation: qbrandDividerIn .34s cubic-bezier(.2, .86, .24, 1) both;
+}
+
+.qbrand-alibaba-cloud-logo,
+.qbrand-qwen-logo {
+  justify-self: start;
+  transform: translateX(clamp(-4.8rem, -4vw, -2rem)) scale(.92);
+  transform-origin: left center;
+  clip-path: inset(0 100% 0 0);
+}
+
+.qbrand-alibaba-cloud-logo { height: clamp(3.6rem, 4.3vw, 4.5rem); }
+.qbrand-qwen-logo {
+  display: block;
+  height: clamp(3.6rem, 4.68vw, 4.77rem);
+}
+
+.qbrand-brand-stage.is-revealed .qbrand-brand-lockup img,
+.qbrand-brand-stage.is-revealed .qbrand-brand-lockup .qbrand-qwen-logo {
+  opacity: 1;
+  transform: none;
+  clip-path: inset(0);
+}
+
+.qbrand-brand-stage.is-revealed .qbrand-brand-lockup .qbrand-alibaba-cloud-logo {
+  clip-path: inset(0 32% 0 0);
+}
+
+.qbrand-disclaimer {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  bottom: clamp(1.8rem, 3.5vh, 3rem);
+  width: min(82vw, 72rem);
+  margin: 0;
+  color: #555555;
+  font-size: clamp(.7rem, .92vw, .92rem);
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+  transform: translateX(-50%);
+  animation: qbrandDisclaimerIn .58s .48s ease backwards;
+}
+
+@keyframes qbrandFieldIn {
+  from { opacity: 0; filter: brightness(1.1); }
+  to { opacity: 1; filter: none; }
+}
+
+@keyframes qbrandTitleIn {
+  from { opacity: 0; transform: translateY(.8rem) scale(.975); filter: blur(.35rem); }
+}
+
+@keyframes qbrandSuffixIn {
+  from { opacity: 0; transform: translateX(-.45em); }
+}
+
+@keyframes qbrandSpeedIn {
+  from { opacity: 0; transform: translateY(.65rem); }
+}
+
+@keyframes qbrandDividerIn {
+  from { transform: scaleY(0); }
+}
+
+@keyframes qbrandDisclaimerIn {
+  from { opacity: 0; transform: translate(-50%, .35rem); }
+}
+
+@media (max-width: 640px) {
+  .qbrand-model-stage h1 { flex-wrap: wrap; }
+  .qbrand-throughput { flex-wrap: wrap; padding: 0 1.5rem; }
+  .qbrand-brand-stage { padding: 0 1.25rem; }
+  .qbrand-brand-lockup { gap: 1.2rem; }
+  .qbrand-cerebras-logo { width: min(38vw, 12.5rem); height: auto; }
+  .qbrand-alibaba-cloud-logo { width: min(47vw, 15.5rem); height: auto; }
+  .qbrand-qwen-logo { width: min(37.8vw, 12.15rem); height: auto; }
+  .qbrand-brand-lockup > i { height: clamp(6rem, 18vw, 7.5rem); }
+  .qbrand-disclaimer { bottom: 1.2rem; width: 88vw; font-size: .62rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qbrand-ending *, .qbrand-ending { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
