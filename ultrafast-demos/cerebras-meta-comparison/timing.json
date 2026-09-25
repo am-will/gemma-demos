@@ -1,0 +1,41 @@
+{
+  "submission": 8.5,
+  "typingStart": 1.5,
+  "typingEnd": 7.0,
+  "duration": 61.0,
+  "comparisonDuration": 50.0,
+  "bumper": {
+    "start": 50.0,
+    "duration": 11.0,
+    "multiplier": 25
+  },
+  "speedup": {
+    "lane": "meta",
+    "factor": 6,
+    "start": 28.066667,
+    "end": 41.677778,
+    "settleBeforeDone": 0.2
+  },
+  "sources": [
+    {
+      "id": "cerebras",
+      "file": "CleanShot 2026-09-24 at 9.38.33 PM.mp4",
+      "submit": 28.066666667,
+      "complete": 47.633333333,
+      "end": 52.476667,
+      "elapsed": 19.566667,
+      "timelineComplete": 28.066667,
+      "timelineEnd": 32.910000333
+    },
+    {
+      "id": "meta",
+      "file": "CleanShot 2026-09-24 at 10.19.11 PM.mp4",
+      "submit": 27.266666667,
+      "complete": 128.7,
+      "end": 135.346667,
+      "elapsed": 101.433333,
+      "timelineComplete": 41.877778000000006,
+      "timelineEnd": 48.524445000000014
+    }
+  ]
+}

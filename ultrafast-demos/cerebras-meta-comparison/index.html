@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Cerebras × Meta AI API</title>
+<script src="assets/gsap.min.js"></script>
+<style>
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/manrope-600.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(assets/manrope-700.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(assets/manrope-800.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Sometype Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/sometype-mono-600.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Sometype Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(assets/sometype-mono-700.ttf) format('truetype');
+}
+
+
+
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#f15a29;color:#252525;font-family:'Manrope',sans-serif}
+#comparison{position:relative;width:100%;height:100%;overflow:hidden;background:#f15a29}
+#stage{position:absolute;inset:0}
+.lane{--surface:#fff;position:absolute;top:24px;width:916px;height:1032px;border:1px solid #deddd7;border-radius:23px;background:var(--surface);box-shadow:0 5px 24px #25252508;overflow:hidden}
+#cerebras-lane{left:32px;--surface:#fdfdfd}#meta-lane{left:972px;--surface:#fdfdfd}
+.header{height:84px;position:relative;display:flex;align-items:center;padding:0 29px;border-bottom:1px solid #eae9e4;background:var(--surface);z-index:4}
+.brand{display:flex;align-items:center;gap:15px;font-weight:700;font-size:31px;letter-spacing:-1px;white-space:nowrap}
+.brand img{width:42px;height:42px;object-fit:contain}.meta .brand{padding-left:5px}
+.clockbox{position:absolute;right:25px;top:18px;min-width:170px;height:48px;padding:0 17px;border-radius:100px;display:flex;align-items:center;justify-content:center;gap:12px;background:#f4f4f1;color:#555650;font-family:'Sometype Mono',monospace;font-weight:600;font-size:23px;letter-spacing:0;text-transform:uppercase;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cerebras .clockbox{background:#fff0ea;color:#f15a29;font-size:24px}
+
+
+.viewport{position:absolute;left:0;right:0;top:84px;bottom:0;overflow:hidden;background:var(--surface)}
+.camera{position:absolute;inset:0;transform-origin:50% 50%}
+.media-mask{position:absolute;top:0;bottom:0;left:50%;height:100%;aspect-ratio:894 / 956;transform:translateX(-50%);border-radius:26px;overflow:hidden;clip-path:inset(0 round 26px);background:var(--surface)}
+.meta .media-mask{aspect-ratio:900 / 958}
+.meta .footage{left:-3px;top:-3px;width:calc(100% + 6px);height:calc(100% + 6px)}
+.footage{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;background:var(--surface)}
+.speed-badge{position:absolute;z-index:6;left:318px;top:420px;width:280px;height:160px;display:grid;place-items:center;border-radius:24px;background:#0081fb;color:#fff;box-shadow:0 14px 45px #0081fb38;font:700 108px/1 'Sometype Mono',monospace;letter-spacing:-3px;text-transform:uppercase;opacity:0;pointer-events:none}
+.popout{--ink:#c54116;position:absolute;z-index:5;left:258px;top:387px;width:400px;height:326px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;border-radius:24px;border:1px solid #f15a2947;background:#ffe3d9;box-shadow:0 22px 58px #1a1a1840;opacity:0}
+.popout strong{font-family:'Sometype Mono',monospace;font-size:32px;font-weight:700;line-height:1;letter-spacing:2px;text-transform:uppercase;color:var(--ink)}
+.popout b{min-width:180px;padding:13px 22px;margin-top:5px;border-radius:100px;color:white;background:#c54116;box-shadow:0 9px 26px #f15a2947;font:600 25px/1 'Sometype Mono',monospace;letter-spacing:0;text-transform:uppercase;text-align:center}
+.meta .popout{--ink:#656660;background:#e5e5e1;border-color:#3a3b3833}.meta .popout strong{color:#656660}.meta .popout b{background:#656660;box-shadow:0 9px 24px #20201e2e}
+.popout .hero{font:700 90px/1 'Sometype Mono',monospace;letter-spacing:-5px;color:var(--ink);white-space:nowrap}
+.popout .metric-label{font:600 17px/1.2 'Sometype Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--ink)}
+.cerebras .popout .metric-label{color:#b83b13}
+.confetti{position:absolute;inset:84px 0 0;z-index:7;pointer-events:none;overflow:hidden}.confetti-piece{position:absolute;width:12px;height:18px;opacity:0;box-shadow:0 1px 5px #140c062e}
+.q-dot-field {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.q-dot-field::before,
+.q-dot-field::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: clamp(52rem, 90vw, 92rem);
+  aspect-ratio: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .9) 0 1.7px, transparent 2px) 0 0 / 9px 9px;
+  -webkit-mask-image: radial-gradient(circle closest-side at center, #000 0 24%, rgba(0, 0, 0, .88) 38%, rgba(0, 0, 0, .58) 52%, rgba(0, 0, 0, .3) 65%, rgba(0, 0, 0, .12) 76%, rgba(0, 0, 0, .035) 86%, transparent 96%);
+  mask-image: radial-gradient(circle closest-side at center, #000 0 24%, rgba(0, 0, 0, .88) 38%, rgba(0, 0, 0, .58) 52%, rgba(0, 0, 0, .3) 65%, rgba(0, 0, 0, .12) 76%, rgba(0, 0, 0, .035) 86%, transparent 96%);
+}
+
+.q-dot-field::before {
+  left: clamp(-44rem, -35vw, -20rem);
+  bottom: clamp(-44rem, -35vw, -20rem);
+}
+
+.q-dot-field::after {
+  top: clamp(-44rem, -35vw, -20rem);
+  right: clamp(-44rem, -35vw, -20rem);
+}
+
+@media (max-width: 700px) {
+  .q-dot-field::before,
+  .q-dot-field::after {
+    width: 58rem;
+    background-size: 8px 8px;
+  }
+}
+
+#dot-background{position:absolute;inset:0;z-index:0}
+
+/* Qwen Ending 2, retimed onto the seekable composition timeline. */
+.bumper{position:absolute;inset:0;z-index:20;overflow:hidden;background:radial-gradient(circle at 50% 48%,#f8f7f4 0 32%,#f8f7f4f5 58%,#f8f7f4c2 100%),#f5f4f1;opacity:0}
+.bumper.q-dot-field::before,.bumper.q-dot-field::after{width:1075px;background:radial-gradient(circle,rgba(241,90,41,.94) 0 1.92px,transparent 2.32px) 0 0 / 12.48px 12.48px;opacity:.58}
+.bumper.q-dot-field::before{left:-154px;bottom:-154px;mask-image:radial-gradient(circle at bottom left,#000 0 16%,#000000e0 28%,#0000008c 40%,#00000040 52%,#00000014 63%,#00000005 72%,transparent 92%)}
+.bumper.q-dot-field::after{right:-154px;top:-154px;mask-image:radial-gradient(circle at top right,#000 0 16%,#000000e0 28%,#0000008c 40%,#00000040 52%,#00000014 63%,#00000005 72%,transparent 92%)}
+.bumper-model{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;z-index:1}
+.bumper-harness{position:absolute;left:250px;right:250px;bottom:60px;margin:0;color:#b8b7b3;text-align:center;font:600 22px/1.55 'Manrope',sans-serif;letter-spacing:0}
+.bumper-model h1{margin:0;color:#171716;font:600 98px/1 'Manrope',sans-serif;letter-spacing:-6px}
+.bumper-throughput{display:flex;align-items:center;justify-content:center;gap:17px;height:70px;color:#c54116;font:600 50px/1.2 'Manrope',sans-serif;letter-spacing:-2px}
+.bumper-throughput span{white-space:nowrap}.bumper-throughput b{display:inline-block;min-width:2ch;text-align:center;font-family:'Sometype Mono',monospace;font-weight:600;letter-spacing:-3px;font-variant-numeric:tabular-nums}
+.bumper-throughput i{width:1px;height:48px;background:#c7c5bf;transform:scaleY(0)}
+.bumper-partner{width:0;height:118px;object-fit:contain;opacity:0}
+.bumper-brands{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:76px}
+.bumper-divider{width:1px;height:176px;background:#aaa8a2;transform:scaleY(0)}
+.bumper-brand-cerebras{position:absolute;right:calc(50% + 76px);width:347px;height:160px;object-fit:contain;opacity:0}
+.bumper-brand-meta{position:absolute;left:calc(50% + 76px);display:flex;align-items:center;gap:24px;opacity:0}
+.bumper-meta-icon{width:84px;height:84px}.bumper-meta-wordmark{width:354px;height:84px;object-fit:contain}
+
+</style>
+</head>
+<body>
+<div data-hf-id="hf-trnl" id="comparison" data-composition-id="comparison" data-width="1920" data-height="1080" data-duration="61">
+<div data-hf-id="hf-1rt5" id="stage">
+<div data-hf-id="hf-9652" id="dot-background" class="q-dot-field" aria-hidden="true" data-layout-ignore=""></div>
+<section data-hf-id="hf-y0z3" id="cerebras-lane" class="lane cerebras">
+ <header data-hf-id="hf-hr6f" class="header"><div data-hf-id="hf-9gsq" class="brand"><img data-hf-id="hf-wfg4" src="assets/cerebras-logo.png" alt="Cerebras logo">Cerebras</div><div data-hf-id="hf-jg0h" class="clockbox"><span data-hf-id="hf-uelj" id="cerebras-clock">0.0 SEC</span></div></header>
+ <div data-hf-id="hf-rhem" class="viewport"><div data-hf-id="hf-6k4b" id="cerebras-camera" class="camera" data-layout-allow-overflow="">
+ <div data-hf-id="hf-79dp" class="media-mask">
+ <video data-hf-id="hf-abdt" id="cerebras-video" class="clip footage" src="assets/cerebras.mp4" data-start="0" data-duration="32.9" data-track-index="0" muted playsinline preload="auto"></video>
+ <img data-hf-id="hf-ue42" id="cerebras-hold" class="clip footage" src="assets/cerebras-hold.png" data-start="32.9" data-duration="17.85" data-track-index="0" alt="Cerebras completed task">
+ </div>
+ </div></div>
+ <div data-hf-id="hf-7cb6" id="cerebras-confetti" class="confetti" aria-hidden="true" data-layout-ignore=""></div>
+ <div data-hf-id="hf-aedq" id="cerebras-popout" class="popout" data-layout-allow-occlusion=""><strong data-hf-id="hf-mpaq">DONE</strong><div data-hf-id="hf-3kxj" class="hero">1,336</div><div data-hf-id="hf-a96o" class="metric-label">TOKENS PER SECOND</div><b data-hf-id="hf-inbb">19.5 SEC</b></div>
+</section>
+<section data-hf-id="hf-6qnb" id="meta-lane" class="lane meta">
+ <header data-hf-id="hf-vn4n" class="header"><div data-hf-id="hf-at6k" class="brand"><img data-hf-id="hf-6g4u" src="assets/meta-ai-logo.svg" alt="Meta AI logo">Meta AI API</div><div data-hf-id="hf-zqyt" class="clockbox"><span data-hf-id="hf-p237" id="meta-clock">0.0 SEC</span></div></header>
+ <div data-hf-id="hf-2n5u" class="viewport"><div data-hf-id="hf-uv1z" id="meta-camera" class="camera" data-layout-allow-overflow="">
+ <div data-hf-id="hf-yxch" class="media-mask">
+ <video data-hf-id="hf-qx69" id="meta-video" class="clip footage" src="assets/meta-221911.mp4" data-start="0" data-duration="28.066667" data-track-index="1" muted playsinline preload="auto"></video>
+ <video data-hf-id="hf-6a4o" id="meta-fast" class="clip footage" src="assets/meta-221911.mp4" data-start="28.066667" data-duration="13.611111000" data-media-start="28.066667" data-playback-rate="6" data-track-index="1" muted playsinline preload="auto"></video>
+ <video data-hf-id="hf-qh1n" id="meta-result" class="clip footage" src="assets/meta-221911.mp4" data-start="41.677778000" data-duration="6.833333333" data-media-start="109.733333" data-track-index="1" muted playsinline preload="auto"></video>
+ <img data-hf-id="hf-sgpv" id="meta-hold" class="clip footage" src="assets/meta-221911-hold.png" data-start="48.511111333" data-duration="2.238888667" data-track-index="1" alt="Meta completed task">
+ </div>
+ </div></div>
+ <div data-hf-id="hf-xnyf" id="speed-badge" class="speed-badge" aria-label="Meta playback sped up six times">6×</div>
+ <div data-hf-id="hf-4f2a" id="meta-popout" class="popout" data-layout-allow-occlusion=""><strong data-hf-id="hf-rmqe">DONE</strong><div data-hf-id="hf-9dia" class="hero">53.2</div><div data-hf-id="hf-qins" class="metric-label">TOKENS PER SECOND</div><b data-hf-id="hf-lmcp">101.4 SEC</b></div>
+</section>
+</div>
+
+<section data-hf-id="hf-ltu2" id="bumper" class="clip bumper q-dot-field" data-start="50" data-duration="11" data-track-index="2" aria-label="Cerebras and Meta AI performance ending">
+ <div data-hf-id="hf-7ky2" id="bumper-model" class="bumper-model">
+  <h1 data-hf-id="hf-ee97" id="bumper-title">Muse Spark 1.2</h1>
+  <div data-hf-id="hf-w2mu" id="bumper-throughput" class="bumper-throughput"><span data-hf-id="hf-g0r7">Up to <b data-hf-id="hf-8imu" id="bumper-rate">0</b>× faster than GPUs</span><i data-hf-id="hf-knje" id="bumper-partner-divider" aria-hidden="true"></i><img data-hf-id="hf-2ltr" id="bumper-partner" class="bumper-partner" src="assets/cerebras-wordmark.svg" alt="Cerebras"></div>
+  <p data-hf-id="hf-odna" id="bumper-harness" class="bumper-harness">Both demos used the same custom harness and prompt, interacting with functional websites.</p>
+ </div>
+ <div data-hf-id="hf-wjlg" class="bumper-brands">
+  <img data-hf-id="hf-bpzh" id="bumper-brand-cerebras" class="bumper-brand-cerebras" src="assets/cerebras-wordmark.svg" alt="Cerebras">
+  <i data-hf-id="hf-prz3" id="bumper-divider" class="bumper-divider" aria-hidden="true"></i>
+  <div data-hf-id="hf-nxms" id="bumper-brand-meta" class="bumper-brand-meta"><img data-hf-id="hf-1o6s" class="bumper-meta-icon" src="assets/meta-ai-logo.svg" alt=""><img data-hf-id="hf-0pph" class="bumper-meta-wordmark" src="assets/meta-ai-wordmark.svg" alt="Meta AI"></div>
+ </div>
+</section>
+</div>
+<script>
+// The timer reports original recorded elapsed time, including during the 6x edit.
+const SUBMIT=8.5, CEREBRAS_ELAPSED=19.566667, META_ELAPSED=101.433333;
+const FAST_START=SUBMIT+CEREBRAS_ELAPSED;
+// Return to 1x for the final 200ms of source playback before DONE.
+const DONE_SETTLE=.2, FAST_STOP_ELAPSED=META_ELAPSED-DONE_SETTLE;
+const FAST_END=FAST_START+(FAST_STOP_ELAPSED-CEREBRAS_ELAPSED)/6;
+const META_DONE=FAST_END+DONE_SETTLE;
+const runs=[{id:'cerebras',elapsed:CEREBRAS_ELAPSED},{id:'meta',elapsed:META_ELAPSED}];
+const timelineAt=(id,elapsed)=>{
+ if(id!=='meta' || elapsed<=CEREBRAS_ELAPSED) return SUBMIT+elapsed;
+ if(elapsed<=FAST_STOP_ELAPSED) return FAST_START+(elapsed-CEREBRAS_ELAPSED)/6;
+ return FAST_END+(elapsed-FAST_STOP_ELAPSED);
+};
+const tl=gsap.timeline({paused:true});
+tl.set('#stage',{opacity:1},0);
+tl.to('.camera',{scale:1.22,x:-40,y:155,duration:0.75,ease:'power2.inOut'},0.65);
+tl.to('.camera',{scale:1,x:0,y:0,duration:0.9,ease:'power2.inOut'},7);
+const display=t=>(Math.floor((t+1e-7)*10)/10).toFixed(1)+' SEC';
+for(const {id,elapsed} of runs){
+ for(let tick=0;tick<=Math.floor(elapsed*10);tick++){
+  tl.set('#'+id+'-clock',{textContent:display(tick/10)},timelineAt(id,tick/10));
+ }
+ const done=timelineAt(id,elapsed);
+ tl.set('#'+id+'-clock',{textContent:display(elapsed)},done);
+ tl.fromTo('#'+id+'-popout',{x:342,y:-508,scale:.28,opacity:0},
+  {x:0,y:0,scale:1,opacity:1,duration:.82,ease:'back.out(1.12)'},done);
+ // Both completion cards hold through the final frame.
+}
+tl.to('#speed-badge',{opacity:.96,duration:.15,ease:'power1.out'},FAST_START);
+let pulseTime=FAST_START+.15, pulseLow=true;
+while(pulseTime<FAST_END-.15){
+ const duration=Math.min(.8,FAST_END-.15-pulseTime);
+ tl.to('#speed-badge',{opacity:pulseLow?.22:.96,duration,ease:'sine.inOut'},pulseTime);
+ pulseTime+=duration;pulseLow=!pulseLow;
+}
+tl.to('#speed-badge',{opacity:0,duration:.15,ease:'power1.out'},FAST_END-.15);
+// Sixty seeded pieces, bounded to the Cerebras panel; deterministic under seeking.
+const colors=['#f15a29','#ff9769','#ffc449','#f7d9bb','#d74616','#252525'];
+const confetti=document.querySelector('#cerebras-confetti');
+for(let i=0;i<60;i++){
+ const piece=document.createElement('i');piece.className='confetti-piece';
+ const burst=Math.floor(i/10), j=i%10;
+ const left=[140,750,240,660,390,520][burst], top=[260,260,390,390,210,210][burst];
+ piece.style.left=left+'px';piece.style.top=top+'px';piece.style.background=colors[i%colors.length];
+ piece.style.borderRadius=i%3===0?'50%':i%3===1?'2px':'8px';
+ piece.style.width=(i%3===2?6:10+i%5)+'px';
+ confetti.appendChild(piece);
+ const start=FAST_START+burst*.11, life=2.3+(i%7)*.12;
+ const dx=(j-4.5)*42, rise=130+(i*31%150), fall=460+(i*23%240);
+ tl.fromTo(piece,{opacity:0,scale:.3,x:0,y:0,rotation:0},{opacity:1,scale:1,duration:.12,ease:'power1.out'},start);
+ tl.to(piece,{x:dx,duration:life,ease:'power1.out'},start);
+ tl.to(piece,{y:-rise,duration:life*.32,ease:'power2.out'},start);
+ tl.to(piece,{y:fall,duration:life*.68,ease:'power2.in'},start+life*.32);
+ tl.to(piece,{rotation:(i%2?1:-1)*(480+i*13),rotationX:540,duration:life,ease:'none'},start);
+ tl.to(piece,{opacity:0,duration:.5,ease:'power1.in'},start+life-.5);
+}
+
+const BUMPER_START=50;
+tl.fromTo('#bumper',{opacity:0},{opacity:1,duration:.72,ease:'power2.out'},BUMPER_START);
+tl.to('#stage',{opacity:0,duration:.65,ease:'power1.out'},BUMPER_START);
+tl.fromTo('#bumper-title',{opacity:0,y:13,scale:.975},{opacity:1,y:0,scale:1,duration:.7,ease:'power3.out'},BUMPER_START);
+tl.fromTo('#bumper-throughput',{opacity:0,y:10},{opacity:1,y:0,duration:.54,ease:'power3.out'},BUMPER_START+.55);
+for(let n=1;n<=25;n++){
+ const at=BUMPER_START+.85+1.05*(1-Math.pow(1-(n-.5)/25,.25));
+ tl.set('#bumper-rate',{textContent:String(n)},at);
+}
+tl.to('#bumper-partner-divider',{scaleY:1,duration:.38,ease:'power1.out'},BUMPER_START+2.1);
+tl.fromTo('#bumper-partner',{width:0,opacity:0,x:-13},{width:256,opacity:1,x:0,duration:.55,ease:'power3.out'},BUMPER_START+2.1);
+tl.to('#bumper-model',{opacity:0,duration:.2,ease:'power1.in'},BUMPER_START+4.9);
+tl.to('#bumper-divider',{scaleY:1,duration:.34,ease:'power3.out'},BUMPER_START+5.1);
+tl.fromTo('#bumper-brand-cerebras',{opacity:0,x:76,scale:.92,clipPath:'inset(0 0 0 100%)'},{opacity:1,x:0,scale:1,clipPath:'inset(0 0 0 0%)',duration:.72,ease:'power3.out'},BUMPER_START+5.55);
+tl.fromTo('#bumper-brand-meta',{opacity:0,x:-76,scale:.92,clipPath:'inset(0 100% 0 0)'},{opacity:1,x:0,scale:1,clipPath:'inset(0 0% 0 0)',duration:.72,ease:'power3.out'},BUMPER_START+5.55);
+tl.set('#bumper',{opacity:1},61);
+
+window.__timelines=window.__timelines||{};
+window.__timelines.comparison=tl;
+</script>
+</body>
+</html>

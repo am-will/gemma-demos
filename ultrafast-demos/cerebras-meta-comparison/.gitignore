@@ -1,0 +1,11 @@
+assets/*.mp4
+assets/*-hold.png
+assets/*-start.png
+.hyperframes/
+.media/
+snapshots/
+renders/
+node_modules/
+dist/
+
+.thumbnails/
