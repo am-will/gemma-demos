@@ -1,0 +1,14 @@
+import {readFileSync,mkdirSync,writeFileSync,existsSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {randomBytes} from 'node:crypto';
+const root=process.cwd();
+if(!existsSync(resolve(root,'apps/electron/main.cjs'))) throw new Error('Run from extracted Muse source root');
+const run=resolve(root,'.artifacts/local-demo');
+if(existsSync(resolve(run,'openclaw.json'))) throw new Error('Configuration already exists; preserve it or move it before setup');
+mkdirSync(resolve(run,'workspace'),{recursive:true});
+const config=JSON.parse(readFileSync(new URL('./config.template.json',import.meta.url),'utf8'));
+config.gateway.auth.token=randomBytes(32).toString('hex');
+config.agents.defaults.workspace=resolve(run,'workspace');
+writeFileSync(resolve(run,'openclaw.json'),JSON.stringify(config,null,2));
+writeFileSync(resolve(run,'workspace/AGENTS.md'),readFileSync(new URL('./WORKFLOWS.md',import.meta.url)));
+console.log('Created local config and workflows. Set CEREBRAS_API_KEY before starting.');

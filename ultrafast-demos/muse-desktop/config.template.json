@@ -1,0 +1,119 @@
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "port": 18791,
+    "auth": {
+      "mode": "token",
+      "token": "REPLACED_AT_SETUP"
+    },
+    "controlUi": {
+      "enabled": true,
+      "allowedOrigins": [
+        "http://127.0.0.1:18791"
+      ]
+    }
+  },
+  "browser": {
+    "enabled": true,
+    "evaluateEnabled": false,
+    "defaultProfile": "embedded",
+    "headless": false,
+    "noSandbox": false,
+    "profiles": {
+      "chrome": {
+        "driver": "extension",
+        "cdpPort": 18801
+      },
+      "openclaw": {
+        "cdpPort": 18802
+      },
+      "embedded": {
+        "driver": "extension",
+        "cdpPort": 18804
+      }
+    },
+    "ssrfPolicy": {
+      "allowedHostnames": [
+        "127.0.0.1"
+      ]
+    }
+  },
+  "tools": {
+    "allow": [
+      "browser"
+    ],
+    "media": {
+      "image": {
+        "enabled": false
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "REPLACED_AT_SETUP",
+      "model": {
+        "primary": "cerebras/msl-muse-spark-1.2"
+      },
+      "models": {
+        "cerebras/msl-muse-spark-1.2": {
+          "params": {
+            "temperature": 1,
+            "topP": 1
+          }
+        }
+      },
+      "thinkingDefault": "high",
+      "reasoningDefault": "on",
+      "timeoutSeconds": 1800
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "cerebras": {
+        "baseUrl": "https://api.cerebras.ai/v1",
+        "apiKey": "${CEREBRAS_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "msl-muse-spark-1.2",
+            "name": "Muse Spark 1.2",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "thinkingLevelMap": {
+              "off": "low",
+              "minimal": "low",
+              "low": "low",
+              "medium": "low",
+              "high": "high",
+              "xhigh": "high"
+            },
+            "compat": {
+              "supportsTools": true,
+              "supportsStrictMode": false,
+              "supportsReasoningEffort": true,
+              "supportedReasoningEfforts": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "thinkingFormat": "openai",
+              "requiresReasoningContentOnAssistantMessages": false
+            },
+            "contextWindow": 524288
+          }
+        ]
+      }
+    }
+  }
+}
