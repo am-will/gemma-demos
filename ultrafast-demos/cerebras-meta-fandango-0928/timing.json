@@ -1,0 +1,15 @@
+{
+  "submission": 10.0,
+  "cerebrasElapsed": 14.933333333333335,
+  "metaElapsed": 56.5,
+  "cerebrasDone": 24.933333333333337,
+  "fastEnd": 35.275000000000006,
+  "metaDone": 35.47500000000001,
+  "bumperStart": 39.6,
+  "duration": 50.6,
+  "trackDuration": 30.366666666666667,
+  "throughputMultiplier": 23,
+  "speedup": 4.0,
+  "fps": 30,
+  "sharedClock": true
+}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920, height=1080">
-<title>Cerebras × Meta AI API</title>
+<title>Cerebras × Meta AI — Fandango</title>
 <script src="assets/gsap.min.js"></script>
 <style>
 @font-face {
@@ -58,9 +58,9 @@
 
 .viewport{position:absolute;left:0;right:0;top:84px;bottom:0;overflow:hidden;background:var(--surface)}
 .camera{position:absolute;inset:0;transform-origin:50% 50%}
-.media-mask{position:absolute;top:0;bottom:0;left:50%;height:100%;aspect-ratio:894 / 956;transform:translateX(-50%);border-radius:26px;overflow:hidden;clip-path:inset(0 round 26px);background:var(--surface)}
-.meta .media-mask{aspect-ratio:900 / 958}
-.meta .footage{left:-3px;top:-3px;width:calc(100% + 6px);height:calc(100% + 6px)}
+.media-mask{position:absolute;top:0;bottom:0;left:50%;height:100%;aspect-ratio:884 / 946;transform:translateX(-50%);border-radius:26px;overflow:hidden;clip-path:inset(0 round 26px);background:var(--surface)}
+.meta .media-mask{aspect-ratio:890 / 946}
+
 .footage{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;background:var(--surface)}
 .speed-badge{position:absolute;z-index:6;left:318px;top:420px;width:280px;height:160px;display:grid;place-items:center;border-radius:24px;background:#0081fb;color:#fff;box-shadow:0 14px 45px #0081fb38;font:700 108px/1 'Sometype Mono',monospace;letter-spacing:-3px;text-transform:uppercase;opacity:0;pointer-events:none}
 .popout{--ink:#c54116;position:absolute;z-index:5;left:258px;top:387px;width:400px;height:326px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;border-radius:24px;border:1px solid #f15a2947;background:#ffe3d9;box-shadow:0 22px 58px #1a1a1840;opacity:0}
@@ -135,7 +135,7 @@
 #prompt-intro{position:absolute;inset:0;z-index:12;pointer-events:none;perspective:900px}
 .prompt-flight{position:absolute;left:120px;top:380px;width:1680px;transform-origin:50% 50%}
 #prompt-meta{opacity:0}
-.muse-composer{display:grid;grid-template-columns:90px minmax(0,1fr) auto;align-items:center;column-gap:15px;padding:25px 30px;border-radius:75px;background:#fff;box-shadow:0 7.5px 35px #191c201f;color:#191c20;font:400 40px/1.5 'Instrument Sans',sans-serif}
+.muse-composer{display:grid;grid-template-columns:90px minmax(0,1fr) auto;align-items:center;column-gap:15px;padding:25px 30px;border-radius:75px;background:#fff;box-shadow:0 7.5px 35px #191c201f;color:#191c20;font:500 40px/1.5 'Instrument Sans',sans-serif}
 .muse-editor{position:relative;min-width:0;padding:15px 0;min-height:270px;white-space:pre-wrap;overflow-wrap:break-word}
 .muse-prompt-text{color:#71767b}
 .muse-caret{opacity:0;display:inline-block;height:43px;width:2px;margin-left:2px;background:#191c20;vertical-align:-7px}
@@ -147,34 +147,36 @@
 .muse-send{border-radius:50%;background:#e3f0ff}
 
 #paired-responses{position:absolute;z-index:2;left:0;top:109px;width:1920px;height:946px;object-fit:fill;clip-path:url(#paired-viewport-mask)}
+.brand-copy{display:flex;flex-direction:column;gap:2px;line-height:1.15}
+.brand-subtitle{font-size:16px;font-weight:600;letter-spacing:0;line-height:1.3;color:#686866}
 </style>
 </head>
 <body>
-<div data-hf-id="hf-trnl" id="comparison" data-composition-id="comparison" data-width="1920" data-height="1080" data-duration="58.5">
+<div data-hf-id="hf-trnl" id="comparison" data-composition-id="comparison" data-width="1920" data-height="1080" data-duration="50.600000">
 <div data-hf-id="hf-1rt5" id="stage">
 <div data-hf-id="hf-9652" id="dot-background" class="q-dot-field" aria-hidden="true" data-layout-ignore=""></div>
 <section data-hf-id="hf-y0z3" id="cerebras-lane" class="lane cerebras">
- <header data-hf-id="hf-hr6f" class="header"><div data-hf-id="hf-9gsq" class="brand"><img data-hf-id="hf-wfg4" src="assets/cerebras-logo.png" alt="Cerebras logo">Cerebras</div><div data-hf-id="hf-jg0h" class="clockbox"><span data-hf-id="hf-uelj" id="cerebras-clock">0.0 SEC</span></div></header>
+ <header data-hf-id="hf-hr6f" class="header"><div data-hf-id="hf-9gsq" class="brand"><img data-hf-id="hf-wfg4" src="assets/cerebras-logo.png" alt="Cerebras logo"><span class="brand-copy"><span>Cerebras</span><span class="brand-subtitle">Meta Muse Spark 1.2, running on Cerebras</span></span></div><div data-hf-id="hf-jg0h" class="clockbox"><span data-hf-id="hf-uelj" id="cerebras-clock">0.0 SEC</span></div></header>
  <div data-hf-id="hf-rhem" class="viewport"><div data-hf-id="hf-6k4b" id="cerebras-camera" class="camera" data-layout-allow-overflow="">
  <div data-hf-id="hf-79dp" class="media-mask">
  <img data-hf-id="hf-uj38" class="footage" src="assets/cerebras-start.png" alt="cerebras prompt ready to submit">
  </div>
  </div></div>
  <div data-hf-id="hf-7cb6" id="cerebras-confetti" class="confetti" aria-hidden="true" data-layout-ignore=""></div>
- <div data-hf-id="hf-aedq" id="cerebras-popout" class="popout" data-layout-allow-occlusion=""><strong data-hf-id="hf-mpaq">DONE</strong><div data-hf-id="hf-3kxj" class="hero">1,336</div><div data-hf-id="hf-a96o" class="metric-label">TOKENS PER SECOND</div><b data-hf-id="hf-inbb">19.5 SEC</b></div>
+ <div data-hf-id="hf-aedq" id="cerebras-popout" class="popout" data-layout-allow-occlusion=""><strong data-hf-id="hf-mpaq">DONE</strong><div data-hf-id="hf-3kxj" class="hero">1,402</div><div data-hf-id="hf-a96o" class="metric-label">TOKENS PER SECOND</div><b data-hf-id="hf-inbb">14.9 SEC</b></div>
 </section>
 <section data-hf-id="hf-6qnb" id="meta-lane" class="lane meta">
- <header data-hf-id="hf-vn4n" class="header"><div data-hf-id="hf-at6k" class="brand"><img data-hf-id="hf-6g4u" src="assets/meta-ai-logo.svg" alt="Meta AI logo">Meta AI API</div><div data-hf-id="hf-zqyt" class="clockbox"><span data-hf-id="hf-p237" id="meta-clock">0.0 SEC</span></div></header>
+ <header data-hf-id="hf-vn4n" class="header"><div data-hf-id="hf-at6k" class="brand"><img data-hf-id="hf-6g4u" src="assets/meta-ai-logo.svg" alt="Meta AI logo"><span class="brand-copy"><span>Meta AI API</span><span class="brand-subtitle">Meta Muse Spark 1.2, running on Meta Model API</span></span></div><div data-hf-id="hf-zqyt" class="clockbox"><span data-hf-id="hf-p237" id="meta-clock">0.0 SEC</span></div></header>
  <div data-hf-id="hf-2n5u" class="viewport"><div data-hf-id="hf-uv1z" id="meta-camera" class="camera" data-layout-allow-overflow="">
  <div data-hf-id="hf-yxch" class="media-mask">
- <img data-hf-id="hf-3z9p" class="footage" src="assets/meta-221911-start.png" alt="meta prompt ready to submit">
+ <img data-hf-id="hf-3z9p" class="footage" src="assets/meta-start.png" alt="meta prompt ready to submit">
  </div>
  </div></div>
- <div data-hf-id="hf-xnyf" id="speed-badge" class="speed-badge" aria-label="Meta playback sped up six times">6×</div>
- <div data-hf-id="hf-4f2a" id="meta-popout" class="popout" data-layout-allow-occlusion=""><strong data-hf-id="hf-rmqe">DONE</strong><div data-hf-id="hf-9dia" class="hero">53.2</div><div data-hf-id="hf-qins" class="metric-label">TOKENS PER SECOND</div><b data-hf-id="hf-lmcp">101.4 SEC</b></div>
+ <div data-hf-id="hf-xnyf" id="speed-badge" class="speed-badge" aria-label="Meta playback sped up approximately 4 times">4×</div>
+ <div data-hf-id="hf-4f2a" id="meta-popout" class="popout" data-layout-allow-occlusion=""><strong data-hf-id="hf-rmqe">DONE</strong><div data-hf-id="hf-9dia" class="hero">62.2</div><div data-hf-id="hf-qins" class="metric-label">TOKENS PER SECOND</div><b data-hf-id="hf-lmcp">56.5 SEC</b></div>
 </section>
 <svg data-hf-id="hf-30au" width="0" height="0" aria-hidden="true" style="position:absolute"><defs data-hf-id="hf-mh0t"><clippath data-hf-id="hf-wxpy" id="paired-viewport-mask" clipPathUnits="userSpaceOnUse"><rect data-hf-id="hf-iq92" x="48" y="0" width="884" height="946" rx="26" /><rect data-hf-id="hf-l38q" x="986" y="0" width="890" height="946" rx="26" /></clippath></defs></svg>
-<video data-hf-id="hf-ojgs" id="paired-responses" class="clip" src="assets/paired-responses-short-hold.mp4" data-start="10.0" data-duration="38.25" data-track-index="0" muted playsinline preload="auto" aria-label="Synchronized Cerebras and Meta responses"></video>
+<video data-hf-id="hf-ojgs" id="paired-responses" class="clip" src="assets/paired-responses.mp4" data-start="10.0" data-duration="30.366666667" data-track-index="0" muted playsinline preload="auto" aria-label="Synchronized Cerebras and Meta responses"></video>
 </div>
 
 <div data-hf-id="hf-e1ak" id="prompt-intro" data-layout-allow-overlap="" aria-label="The shared prompt is typed and sent, revealing both agents together">
@@ -190,7 +192,7 @@
  </div></div>
 </div>
 
-<section data-hf-id="hf-ltu2" id="bumper" class="clip bumper q-dot-field" data-start="47.5" data-duration="11" data-track-index="2" aria-label="Cerebras and Meta AI performance ending">
+<section data-hf-id="hf-ltu2" id="bumper" class="clip bumper q-dot-field" data-start="39.600000000" data-duration="11" data-track-index="2" aria-label="Cerebras and Meta AI performance ending">
  <div data-hf-id="hf-7ky2" id="bumper-model" class="bumper-model">
   <h1 data-hf-id="hf-ee97" id="bumper-title">Muse Spark 1.2</h1>
   <div data-hf-id="hf-w2mu" id="bumper-throughput" class="bumper-throughput"><span data-hf-id="hf-g0r7">Up to <b data-hf-id="hf-8imu" id="bumper-rate">0</b>× faster than GPUs</span><i data-hf-id="hf-knje" id="bumper-partner-divider" aria-hidden="true"></i><img data-hf-id="hf-2ltr" id="bumper-partner" class="bumper-partner" src="assets/cerebras-wordmark.svg" alt="Cerebras"></div>
@@ -204,24 +206,24 @@
 </section>
 </div>
 <script>
-// The timer reports original recorded elapsed time, including during the 6x edit.
-const SUBMIT=10.0, CEREBRAS_ELAPSED=19.566667, META_ELAPSED=101.433333;
+// The timer reports original recorded elapsed time, including during the 4x edit.
+const SUBMIT=10.0, CEREBRAS_ELAPSED=14.933333333, META_ELAPSED=56.500000000;
 const FAST_START=SUBMIT+CEREBRAS_ELAPSED;
 // Return to 1x for the final 200ms of source playback before DONE.
 const DONE_SETTLE=.2, FAST_STOP_ELAPSED=META_ELAPSED-DONE_SETTLE;
-const FAST_END=FAST_START+(FAST_STOP_ELAPSED-CEREBRAS_ELAPSED)/6;
+const FAST_END=FAST_START+(FAST_STOP_ELAPSED-CEREBRAS_ELAPSED)/4;
 const META_DONE=FAST_END+DONE_SETTLE;
 const runs=[{id:'cerebras',elapsed:CEREBRAS_ELAPSED},{id:'meta',elapsed:META_ELAPSED}];
 const timelineAt=(id,elapsed)=>{
  if(id!=='meta' || elapsed<=CEREBRAS_ELAPSED) return SUBMIT+elapsed;
- if(elapsed<=FAST_STOP_ELAPSED) return FAST_START+(elapsed-CEREBRAS_ELAPSED)/6;
+ if(elapsed<=FAST_STOP_ELAPSED) return FAST_START+(elapsed-CEREBRAS_ELAPSED)/4;
  return FAST_END+(elapsed-FAST_STOP_ELAPSED);
 };
 const tl=gsap.timeline({paused:true});
 tl.set('#stage',{opacity:1},0);
 // The large prompt is native text with Muse's local font and original SVG controls.
 // Fixed text layout keeps the caret and letterforms crisp throughout typing.
-const PROMPT='Find my friends and I movie tickets for the new Spiderman movie.\n\nChoose the closest theater to 94118, and get us tickets for Friday night, anytime after 4pm. Grab 4 tickets all seated together in the same row.';
+const PROMPT="Find me four tickets to Spider-Man: Brand New Day at the closest theater to 94118 on opening night after 4 PM. Make sure all four seats are together.";
 tl.set('.muse-prompt-text',{textContent:'',color:'#191c20'},1.5);
 for(let i=1;i<=PROMPT.length;i++){
  tl.set('.muse-prompt-text',{textContent:PROMPT.slice(0,i)},1.5+(i-1)/(PROMPT.length-1)*5.2);
@@ -282,13 +284,13 @@ for(let i=0;i<60;i++){
  tl.to(piece,{opacity:0,duration:.5,ease:'power1.in'},start+life-.5);
 }
 
-const BUMPER_START=47.5;
+const BUMPER_START=39.600000000;
 tl.fromTo('#bumper',{opacity:0},{opacity:1,duration:.72,ease:'power2.out'},BUMPER_START);
 tl.to('#stage',{opacity:0,duration:.65,ease:'power1.out'},BUMPER_START);
 tl.fromTo('#bumper-title',{opacity:0,y:13,scale:.975},{opacity:1,y:0,scale:1,duration:.7,ease:'power3.out'},BUMPER_START);
 tl.fromTo('#bumper-throughput',{opacity:0,y:10},{opacity:1,y:0,duration:.54,ease:'power3.out'},BUMPER_START+.55);
-for(let n=1;n<=25;n++){
- const at=BUMPER_START+.85+1.05*(1-Math.pow(1-(n-.5)/25,.25));
+for(let n=1;n<=23;n++){
+ const at=BUMPER_START+.85+1.05*(1-Math.pow(1-(n-.5)/23,.25));
  tl.set('#bumper-rate',{textContent:String(n)},at);
 }
 tl.to('#bumper-partner-divider',{scaleY:1,duration:.38,ease:'power1.out'},BUMPER_START+2.1);
@@ -297,7 +299,7 @@ tl.to('#bumper-model',{opacity:0,duration:.2,ease:'power1.in'},BUMPER_START+4.9)
 tl.to('#bumper-divider',{scaleY:1,duration:.34,ease:'power3.out'},BUMPER_START+5.1);
 tl.fromTo('#bumper-brand-cerebras',{opacity:0,x:76,scale:.92,clipPath:'inset(0 0 0 100%)'},{opacity:1,x:0,scale:1,clipPath:'inset(0 0 0 0%)',duration:.72,ease:'power3.out'},BUMPER_START+5.55);
 tl.fromTo('#bumper-brand-meta',{opacity:0,x:-76,scale:.92,clipPath:'inset(0 100% 0 0)'},{opacity:1,x:0,scale:1,clipPath:'inset(0 0% 0 0)',duration:.72,ease:'power3.out'},BUMPER_START+5.55);
-tl.set('#bumper',{opacity:1},58.5);
+tl.set('#bumper',{opacity:1},50.600000000);
 
 window.__timelines=window.__timelines||{};
 window.__timelines.comparison=tl;

@@ -1,19 +1,19 @@
 {
-  "submission": 8.5,
+  "submission": 10.0,
   "typingStart": 1.5,
   "typingEnd": 7.0,
-  "duration": 61.0,
-  "comparisonDuration": 50.0,
+  "duration": 58.5,
+  "comparisonDuration": 47.5,
   "bumper": {
-    "start": 50.0,
+    "start": 47.5,
     "duration": 11.0,
     "multiplier": 25
   },
   "speedup": {
     "lane": "meta",
     "factor": 6,
-    "start": 28.066667,
-    "end": 41.677778,
+    "start": 29.566667,
+    "end": 43.177778,
     "settleBeforeDone": 0.2
   },
   "sources": [
@@ -24,8 +24,8 @@
       "complete": 47.633333333,
       "end": 52.476667,
       "elapsed": 19.566667,
-      "timelineComplete": 28.066667,
-      "timelineEnd": 32.910000333
+      "timelineComplete": 29.566667,
+      "timelineEnd": 34.410000333
     },
     {
       "id": "meta",
@@ -34,8 +34,30 @@
       "complete": 128.7,
       "end": 135.346667,
       "elapsed": 101.433333,
-      "timelineComplete": 41.877778000000006,
-      "timelineEnd": 48.524445000000014
+      "timelineComplete": 43.377778,
+      "timelineEnd": 46.024445
     }
-  ]
+  ],
+  "playback": {
+    "asset": "paired-responses-short-hold.mp4",
+    "start": 10.0,
+    "fps": 30,
+    "sharedClock": true,
+    "sourceStartFrames": {
+      "cerebras": 256,
+      "meta": 255
+    },
+    "removedHold": {
+      "originalTimelineStart": 45,
+      "originalTimelineEnd": 49,
+      "duration": 4
+    }
+  },
+  "intro": {
+    "typingEnd": 6.7,
+    "extraReadingHold": 1.5,
+    "sendPress": 8.25,
+    "departureStart": 8.5,
+    "departureEnd": 9.4
+  }
 }

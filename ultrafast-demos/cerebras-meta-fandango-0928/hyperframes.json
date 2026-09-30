@@ -9,12 +9,5 @@
   "media": {
     "autoProxy": true
   },
-  "authoringSkill": "general-video",
-  "registryItems": [
-    {
-      "name": "split-tilt-cards",
-      "type": "hyperframes:component",
-      "target": "compositions/components/split-tilt-cards.html"
-    }
-  ]
+  "authoringSkill": "general-video"
 }
